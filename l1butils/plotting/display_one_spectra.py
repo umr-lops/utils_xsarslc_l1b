@@ -1,21 +1,15 @@
-import sys
-import time
+
 import os
-import xarray
 import logging
 from matplotlib import pyplot as plt
 from matplotlib import colors as mcolors
 cmap = mcolors.LinearSegmentedColormap.from_list("", ["white","violet","mediumpurple","cyan","springgreen","yellow","red"])
 import numpy as np
-sys.path.append('/home1/datahome/agrouaze/git/xsarseafork/src/')
-sys.path.append('/home1/datahome/agrouaze/git/xsarseafork/src/xsarsea/')
-#import xsarsea.conversion_polar_cartesian
-import conversion_polar_cartesian
-import spectrum_clockwise_to_trigo
+from l1butils import  conversion_polar_cartesian
+from l1butils import spectrum_clockwise_to_trigo
 import display_xspectra_grid
-import spectrum_rotation
+from  l1butils import spectrum_rotation
 from l1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
-sys.path.append('/home1/datahome/agrouaze/git/wavetoolbox/')
 import add_azimuth_cutoff_lines_on_polar_spec_fig #wavetoolbox
 reference_oswK_1145m_60pts = np.array([0.005235988, 0.00557381, 0.005933429, 0.00631625, 0.00672377,
     0.007157583, 0.007619386, 0.008110984, 0.008634299, 0.009191379,
@@ -339,7 +333,6 @@ def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display
         # if True:
         #     lower_wl = 43.
         #     higher_wl = 250.
-        #     sys.path.append('/home1/datahome/agrouaze/git/dspec/src/dspec/')
         #     from spectrum_momentum import filter_cartesian_with_wavelength_ring
         #     crossSpectraRe_red = filter_cartesian_with_wavelength_ring(lower_wl, higher_wl, crossSpectraRe_red)
         # partie display plot
