@@ -1,14 +1,13 @@
 [project]
-name = "xsarslc"
+name = "l1butils"
 requires-python = ">= 3.9"
-description = "Python library to compute cross spectra from SAR image"
+description = "Python library to exploit SAR IFREMER L1B products"
 readme.file = "README.md"
 readme.content-type = "text/markdown"
-#license.text = "GPL-3.0"
 license = {text = "GPL-3.0"}
 keywords = ["SAR", "wave", "reseach", "cross-spectra"]
 authors = [
-  {name = "Frederic Nouguier"}
+  {name = "Alexis Mouche"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -30,7 +29,7 @@ requires = ["setuptools>=64.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["xsarslc"]
+packages = ["l1butils"]
 
 [tool.setuptools_scm]
 fallback_version = "999"
@@ -40,4 +39,4 @@ profile = "black"
 skip_gitignore = true
 float_to_top = true
 default_section = "THIRDPARTY"
-known_first_party = "xsarslc"
+known_first_party = "l1butils"
