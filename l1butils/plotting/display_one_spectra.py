@@ -262,11 +262,74 @@ def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fi
         plt.show()
     return set_xspec
 
+def plot_a_single_xspec_cart_L1B_WV(ds,title,fig=None,ax=None,part='Re'
+                                    ,orbit_pass=None,platform_heading=None,dpi=100,figsize=(8,6),
+                                    outputfile=None,limit_display_wv = 50,
+                                    circles_wavelength = [50, 100, 200, 300, 400, 500],vmax=None):
+    """
+
+    :param ds:
+    :param title:
+    :param fig:
+    :param ax:
+    :param part:
+    :param orbit_pass:
+    :param platform_heading:
+    :param dpi:
+    :param figsize:
+    :param outputfile:
+    :param limit_display_wv: float
+    :return:
+    """
+
+
+    tau_id = 2
+    add_colorbar = True
+    # fig = plt.figure()
+    varname = 'xspectra_%stau'  # it is mandatory to recombined Re+1j*Im dans the L1B
+    if varname not in ds:
+        logging.info('conjugate Re+Im')
+        for tautau in range(3):
+            ds['xspectra_%stau' % tautau] = ds['xspectra_%stau_Re' % tautau] + 1j * ds['xspectra_%stau_Im' % tautau]
+            ds = ds.drop(['xspectra_%stau_Re' % tautau, 'xspectra_%stau_Im' % tautau])
+
+    set_xspec = ds[varname%tau_id]
+    if 'k_az' in set_xspec.dims:
+        pass
+    else:
+        set_xspec = set_xspec.swap_dims({'freq_line': 'k_az', 'freq_sample': 'k_rg'})
+        set_xspec = symmetrize_xspectrum(set_xspec, dim_range='k_rg', dim_azimuth='k_az')
+    ds[varname%tau_id] = set_xspec
+    # scales = (0, 5, 0, 5)
+    # t = Affine2D().rotate_deg(25)
+
+    # # Add floating axes
+    # h = floating_axes.GridHelperCurveLinear(t, scales)
+    # ax = floating_axes.FloatingSubplot(fig, 111, grid_helper=h)
+    if fig is None:
+        fig = plt.figure(dpi=dpi, figsize=figsize)
+    # fig.add_subplot(ax)
+    if ax is None:
+        ax = plt.subplot(111)
+    im = display_cartesian_spectra(ds, part=part, cat_xspec='intra', limit_display_wv=limit_display_wv,
+                                   title=title, outputfile=outputfile,
+                                   fig=fig, ax=ax, interactive=False, tau_id=tau_id, varname=varname, rolling=True,
+                                   title_fontsize=8,
+                                   circles_wavelength=circles_wavelength, add_colorbar=add_colorbar, kx_varname='k_rg',
+                                   ky_varname='k_az', dpi=dpi,vmax=vmax)  #
+    if orbit_pass == 'Descending':
+        ax.invert_xaxis()
+        ax.invert_yaxis()
+    plt.axis('scaled')  # to make the circle looks like circles
+    return set_xspec
+
+
 
 
 def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display_wv=100,title=None,outputfile=None,
                           fig=None,ax=None,interactive=False,tau_id=2,varname='cross-spectrum_%stau',title_fontsize=12,
-                              kx_varname='kx',ky_varname='ky',rolling=False,dpi=100,circles_wavelength=[50,100,200,400],add_colorbar=True):
+                              kx_varname='kx',ky_varname='ky',rolling=False,dpi=100,circles_wavelength=[50,100,200,400],
+                              add_colorbar=True,vmax=None):
     """
 
     Parameters
@@ -320,7 +383,6 @@ def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display
             else:
                 thecmap = cmap
                 coS = abs(allspecs[varname])
-        print('cos',coS)
         crossSpectraRe_red = coS.where(
             np.logical_and(np.abs(coS[kx_varname]) <= 0.14,np.abs(coS[ky_varname]) <= 0.14),drop=True)
         #crossSpectraRe_red = crossSpectraRe_red.rolling(kx=3,center=True).mean().rolling(ky=3,center=True).mean()
@@ -343,11 +405,12 @@ def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display
             ax = plt.subplot(1,1,1,polar=False)
         # add azimuth / range red axis
         # plt.axhline(y=0)
-        plt.plot([0, 0], [-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], 'm-')
-        plt.text(-0.001,0.05,'azimuth',color='m',rotation=90, va='center',fontsize=7)
-        plt.plot([-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], [0, 0], 'r-')
+        plt.plot([0, 0], [-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], 'c--',alpha=0.7,)
+        plt.text(-0.001,0.05,'azimuth',color='c',rotation=90, va='center',fontsize=7)
+        plt.plot([-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], [0, 0], 'r--',alpha=0.7)
         plt.text(0.05, 0.004, 'range', color='r', rotation=0, va='center',fontsize=7)
-        im = crossSpectraRe_red.T.plot(cmap=thecmap,alpha=0.8,add_colorbar=add_colorbar) # the transpose has been added in March 2023 to have dims in this order (k_az: 56, k_rg: 179)
+        crossSpectraRe_red = crossSpectraRe_red.transpose("k_az", "k_rg")
+        im = crossSpectraRe_red.plot(cmap=thecmap,alpha=0.8,add_colorbar=add_colorbar,vmax=vmax)
         add_cartesian_wavelength_circles(default_values=circles_wavelength)
 
 
