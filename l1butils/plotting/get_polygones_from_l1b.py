@@ -51,8 +51,9 @@ def get_polys_with_varname(files, varname = 'sigma0',burst_type=['intraburst'],c
                     #print(var)
                     pts = [ (x,y) for x,y in zip(lon,lat)]
                     if np.isfinite(sig):
-                        poly = gv.Polygons({('Longitude','Latitude'): pts,'level':var},vdims='level',kdims=['Longitude','Latitude']).opts(color='NA',
-                                                                                                                                          colorbar=True,cmap=cmap,clim=clim,alpha=alpha)
+                        poly = gv.Polygons({('Longitude','Latitude'): pts,'level':var},
+                                        vdims='level',kdims=['Longitude','Latitude']).opts(color='NA',
+                                                                        colorbar=True,cmap=cmap,clim=clim,alpha=alpha)
                         #return poly
                         polys = polys*poly                
                     
