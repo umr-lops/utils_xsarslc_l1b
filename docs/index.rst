@@ -67,3 +67,4 @@ Last documentation build: |today|
 
 .. _on github: https://github.com/umr-lops/utils_xsarslc_l1b
 .. _datatree: https://github.com/xarray-contrib/datatree
+.. _xarray: http://xarray.pydata.org
