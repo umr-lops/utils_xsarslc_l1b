@@ -9,7 +9,7 @@ import os
 import matplotlib.pyplot as plt
 from shapely import geometry
 from shapely import wkt
-
+import logging
 
 def get_polys_with_varname(files, varname = 'sigma0',burst_type=['intraburst'],cmap='Greys_r',clim=(0,0.15),alpha=0.5):
 
@@ -35,6 +35,7 @@ def get_polys_with_varname(files, varname = 'sigma0',burst_type=['intraburst'],c
             Nt = dt[brst].ds.sizes['tile_sample']
             bursts = dt[brst]['burst'].values        
             for ib in bursts:
+                logging.debug('ib : %s',ib)
                 for it in np.arange(Nt):
 
                     # Get corner list
