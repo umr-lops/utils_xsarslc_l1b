@@ -36,21 +36,24 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, variable_na
                 # Find lon/lat tile corners
                 lon_corners = l1b_ds['corner_longitude'].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values.flatten().tolist()
                 lat_corners = l1b_ds['corner_latitude'].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values.flatten().tolist()
-                # Define the tile polygons
-                pts = [geometry.Point(lon_corners[cpt],lat_corners[cpt]) for cpt,_ in enumerate(lon_corners)]
-                pts = [pts[0], pts[1], pts[3], pts[2]]
-                poly_tile = geometry.Polygon(pts)
-                poly_tiles.append(poly_tile)
-                # Coordinates
-                ibursts.append(iburst)
-                itile_samples.append(itile_sample)
-                itile_lines.append(itile_line)
-                if (variable_names[0] is not None):
-                    for variable_name in variable_names:
-                        if (variable_name=='macs_Im'):
-                            variables[variable_name].append(float(l1b_ds[variable_name].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values[ik]))
-                        else:
-                            variables[variable_name].append(float(l1b_ds[variable_name].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values))
+                # Check on the lon/lat corners validity
+                #print(np.sum((~np.isfinite(lon_corners))))
+                if np.sum((~np.isfinite(lon_corners)))==0:
+                    # Define the tile polygons
+                    pts = [geometry.Point(lon_corners[cpt],lat_corners[cpt]) for cpt,_ in enumerate(lon_corners)]
+                    pts = [pts[0], pts[1], pts[3], pts[2]]
+                    poly_tile = geometry.Polygon(pts)
+                    poly_tiles.append(poly_tile)
+                    # Coordinates
+                    ibursts.append(iburst)
+                    itile_samples.append(itile_sample)
+                    itile_lines.append(itile_line)
+                    if (variable_names[0] is not None):
+                        for variable_name in variable_names:
+                            if (variable_name=='macs_Im'):
+                                variables[variable_name].append(float(l1b_ds[variable_name].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values[ik]))
+                            else:
+                                variables[variable_name].append(float(l1b_ds[variable_name].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values))
                         
     polygons['tiles'] = poly_tiles
     #
@@ -89,6 +92,7 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, variable_names = [None],ik=0
 
     burst_types = ['intra','inter']
     for burst_type in burst_types:
+        #print(burst_type)
         l1b_ds = xr.open_dataset(l1b_file,group=burst_type+'burst')
         if (variable_names[0] is not None):
             _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds, variable_names = variable_names, ik=ik)
@@ -134,12 +138,17 @@ def get_swath_tiles_polygons_from_l1bfiles(l1b_files, variable_names = [None], i
             for variable_name in variable_names:
                 variables[burst_type][variable_name] = []
         
-    # Fill the ouput 
     for l1b_file in l1b_files:
+
+        #print(l1b_file)
+        # Read the file
         if (variable_names[0] is not None):
             _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bfile(l1b_file, variable_names = variable_names, ik=ik)
         else:
             _polygons, _coordinates = get_swath_tiles_polygons_from_l1bfile(l1b_file)
+
+            
+        # Fill the ouput for each burst_type
         for burst_type in burst_types :
             # polygons
             for polygons_varname in polygons_varnames:
