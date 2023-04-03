@@ -32,6 +32,15 @@ Overview
     inter (i.e. overlapping bursts) burst cross spectrum.
 
 
+Examples
+........
+
+.. note::
+    here are some examples of usage
+
+* :doc:`examples/display_a_IW_L1B_xspectra`
+
+
 Reference
 .........
 
@@ -57,6 +66,13 @@ Last documentation build: |today|
    :caption: Getting Started
 
    installing
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Examples
+
+   examples/display_a_IW_L1B_xspectra
 
 .. toctree::
    :maxdepth: 1
