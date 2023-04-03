@@ -1,16 +1,9 @@
-from glob import glob
-import xarray as xr
-import numpy as np
-import os
-from datatree import DataTree
+
 import argparse
-
-
-from raster_readers import ecmwf_0100_1h
-from raster_readers import ww3_global_yearly_3h
-from raster_readers import resource_strftime
+from l1butils.raster_readers import ecmwf_0100_1h
+from l1butils.raster_readers import ww3_global_yearly_3h
+from l1butils.raster_readers import resource_strftime
 from scipy.interpolate import RectBivariateSpline
-
 from datetime import datetime, timedelta
 from shapely import wkt
 from glob import glob
@@ -19,21 +12,14 @@ import xarray as xr
 #import matplotlib.pyplot as plt
 from shapely import geometry
 from datatree import DataTree
-
-
 import sys, os
-sys.path.append('/home1/datahome/amouche/PythonTool/utils_xsarslc_l1b/plotting/')
-sys.path.append('/home1/datahome/amouche/PythonTool/utils_xsarslc_l1b/')
-from get_polygons_from_l1b import  get_swath_tiles_polygons_from_l1bgroup
-from utils import timing, haversine, map_blocks_coords
+from l1butils.get_polygons_from_l1b import  get_swath_tiles_polygons_from_l1bgroup
+from l1butils.utils import timing, haversine, map_blocks_coords
+from l1butils.coloc.coloc import raster_cropping_in_polygon_bounding_box, coloc_tiles_from_l1bgroup_with_raster
+from l1butils.compute.compute_from_l1b import compute_xs_from_l1b
+from l1butils.compute.cwave import compute_cwave_parameters
+from l1butils.compute.macs import compute_macs
 
-sys.path.append('/home1/datahome/amouche/PythonTool/utils_xsarslc_l1b/coloc/')
-from coloc import raster_cropping_in_polygon_bounding_box, coloc_tiles_from_l1bgroup_with_raster
-
-sys.path.append('/home1/datahome/amouche/PythonTool/utils_xsarslc_l1b/compute/')
-from compute_from_l1b import compute_xs_from_l1b
-from cwave import compute_cwave_parameters
-from macs import compute_macs
 
 
 def do_L1C_SAFE_from_L1B_SAFE(full_safe_file):
