@@ -1,29 +1,14 @@
-
-import numpy as np
-import xarray as xr
-
-
-
-from raster_readers import ecmwf_0100_1h
-from raster_readers import ww3_global_yearly_3h
-from raster_readers import resource_strftime
-from scipy.interpolate import RectBivariateSpline
-
-
-
+from l1butils.raster_readers import ecmwf_0100_1h
+from l1butils.raster_readers import ww3_global_yearly_3h
+from l1butils.raster_readers import resource_strftime
 import sys, os
-sys.path.append('/home1/datahome/amouche/PythonTool/utils_xsarslc_l1b/plotting/')
-sys.path.append('/home1/datahome/amouche/PythonTool/utils_xsarslc_l1b/')
-from get_polygons_from_l1b import  get_swath_tiles_polygons_from_l1bgroup
-from utils import timing, haversine, map_blocks_coords
-
-
+from l1butils.get_polygons_from_l1b import  get_swath_tiles_polygons_from_l1bgroup
+from l1butils.utils import timing, haversine, map_blocks_coords
 from datetime import datetime, timedelta
 from shapely import wkt
 from glob import glob
 import numpy as np
 import xarray as xr
-#import matplotlib.pyplot as plt
 from shapely import geometry
 from datatree import DataTree
 
