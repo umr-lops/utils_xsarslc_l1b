@@ -20,7 +20,7 @@ import datetime
 import numpy as np
 import glob
 #from utils import bind, url_get
-from utils import url_get
+from l1butils.utils import url_get
 import pandas as pd
 
 
