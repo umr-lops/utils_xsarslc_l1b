@@ -12,10 +12,10 @@ import xarray as xr
 # from xsarslc.tools import xndindex
 
 # +
-def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, variable_names = [None],ik=0):
+def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, variable_names = [None],ik=0,burst_type=None):
 
     polygons = {} ; coordinates = {}; variables = {}
-    poly_tiles = []
+    poly_tiles = [] ; poly_bursts = []
     ibursts = []
     itile_samples = []
     itile_lines = []
@@ -31,6 +31,15 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, variable_na
     
     # Tiles polynom & variables
     for iburst in l1b_ds['burst'].values:
+        if (burst_type=='intra'):
+            burst_lon_corners = l1b_ds['burst_corner_longitude'].sel(burst=iburst).values.flatten().tolist()
+            burst_lat_corners = l1b_ds['burst_corner_latitude'].sel(burst=iburst).values.flatten().tolist()
+            if np.sum((~np.isfinite(burst_lon_corners)))==0:
+                # Define the burst polygons
+                pts_burst = [geometry.Point(burst_lon_corners[cpt],burst_lat_corners[cpt]) for cpt,_ in enumerate(burst_lon_corners)]
+                pts_burst = [pts_burst[0], pts_burst[1], pts_burst[3], pts_burst[2]]
+                poly_burst = geometry.Polygon(pts_burst)
+                poly_bursts.append(poly_burst)
         for itile_sample in l1b_ds['tile_sample'].values:
             for itile_line in l1b_ds['tile_line'].values:
                 # Find lon/lat tile corners
@@ -54,9 +63,11 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, variable_na
                                 variables[variable_name].append(float(l1b_ds[variable_name].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values[ik]))
                             else:
                                 variables[variable_name].append(float(l1b_ds[variable_name].sel(burst=iburst,tile_sample=itile_sample,tile_line=itile_line).values))
-                        
+    #=====
+    #if (burst_type=='intra'):
+    polygons['bursts'] = poly_bursts
     polygons['tiles'] = poly_tiles
-    #
+    #=====
     coordinates['ibursts'] = ibursts 
     coordinates['itile_samples'] = itile_samples 
     coordinates['itile_lines'] = itile_lines
@@ -73,7 +84,7 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, variable_names = [None],ik=0
     # Initialisation of output structures
     polygons = {}; coordinates = {};  variables = {}
     burst_types = ['intra','inter']
-    polygons_varnames = ['swath','tiles']
+    polygons_varnames = ['swath','tiles','bursts']
     coordinates_varnames = ['ibursts', 'itile_samples','itile_lines'] 
     for burst_type in burst_types :
         # polygons
@@ -95,9 +106,9 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, variable_names = [None],ik=0
         #print(burst_type)
         l1b_ds = xr.open_dataset(l1b_file,group=burst_type+'burst')
         if (variable_names[0] is not None):
-            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds, variable_names = variable_names, ik=ik)
+            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds, variable_names = variable_names, ik=ik, burst_type=burst_type)
         else:
-            _polygons, _coordinates = get_swath_tiles_polygons_from_l1bgroup(l1b_ds)
+            _polygons, _coordinates = get_swath_tiles_polygons_from_l1bgroup(l1b_ds, burst_type=burst_type)
 
         # polygons
         for polygons_varname in polygons_varnames:
@@ -121,7 +132,7 @@ def get_swath_tiles_polygons_from_l1bfiles(l1b_files, variable_names = [None], i
     # Initialisation of output structures
     polygons = {}; coordinates = {};  variables = {}
     burst_types = ['intra','inter']
-    polygons_varnames = ['swath','tiles']
+    polygons_varnames = ['swath','tiles','bursts']
     coordinates_varnames = ['ibursts', 'itile_samples','itile_lines'] 
     for burst_type in burst_types :
         # polygons
