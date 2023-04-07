@@ -38,6 +38,15 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0, **kwa
 
     # Tiles polynom & variables
     for iburst in l1b_ds['burst'].values:
+        if (burst_type=='intra'):
+            burst_lon_corners = l1b_ds['burst_corner_longitude'].sel(burst=iburst).values.flatten().tolist()
+            burst_lat_corners = l1b_ds['burst_corner_latitude'].sel(burst=iburst).values.flatten().tolist()
+            if np.sum((~np.isfinite(burst_lon_corners)))==0:
+                # Define the burst polygons
+                pts_burst = [geometry.Point(burst_lon_corners[cpt],burst_lat_corners[cpt]) for cpt,_ in enumerate(burst_lon_corners)]
+                pts_burst = [pts_burst[0], pts_burst[1], pts_burst[3], pts_burst[2]]
+                poly_burst = geometry.Polygon(pts_burst)
+                poly_bursts.append(poly_burst)
         for itile_sample in l1b_ds['tile_sample'].values:
             for itile_line in l1b_ds['tile_line'].values:
                 # Find lon/lat tile corners
