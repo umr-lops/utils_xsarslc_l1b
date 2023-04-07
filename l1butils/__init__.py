@@ -3,3 +3,4 @@ try:
 except ImportError: # for Python<3.8
     import importlib_metadata as metadata
 __version__ = metadata.version('l1butils')
+__all__ = ['utils','compute','plotting','scripts','coloc']
