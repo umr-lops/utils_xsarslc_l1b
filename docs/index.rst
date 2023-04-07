@@ -39,6 +39,9 @@ Examples
     here are some examples of usage
 
 * :doc:`examples/display_a_IW_L1B_xspectra`
+* :doc:`examples/do_L1C_SAFE_from_L1B_SAFE_example`
+* :doc:`examples/plotting_L1B_geometry_with_holoview_example`
+* :doc:`examples/plotting_L1B_variables_with_holoview_example`
 
 
 Reference
@@ -73,6 +76,9 @@ Last documentation build: |today|
    :caption: Examples
 
    examples/display_a_IW_L1B_xspectra
+   examples/do_L1C_SAFE_from_L1B_SAFE_example
+   examples/plotting_L1B_geometry_with_holoview_example
+   examples/plotting_L1B_variables_with_holoview_example
 
 .. toctree::
    :maxdepth: 1
