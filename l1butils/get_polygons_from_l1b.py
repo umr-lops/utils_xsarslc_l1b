@@ -4,13 +4,16 @@ from shapely import geometry
 from shapely import wkt
 import xarray as xr
 import logging
-def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0, **kwargs):
+
+polygons_varnames = ['swath', 'tiles', 'bursts']
+def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0,burst_type='intra', **kwargs):
     """
     get polygons for a given group of L1B SAR IFREMER product
     Args:
         l1b_ds: xarray.Dataset
         swath_only: bool [optional]
         ik: int [optional], index of wave number selected for variable displayed such as 'cwave' or 'imacs'
+        burst_type: str intra or inter [default='intra']
     Keyword Args:
         kwargs (dict): optional keyword arguments : variable_names (list), is valid entry
     Returns:
@@ -22,6 +25,7 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0, **kwa
     variables = {}
     poly_tiles = []
     ibursts = []
+    poly_bursts = []
     itile_samples = []
     itile_lines = []
     variable_names = kwargs.get('variable_names', None)
@@ -35,18 +39,21 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0, **kwa
     polygons['swath'] = [poly_swath]
     if swath_only:
         return polygons, coordinates, variables
-
+    logging.debug('l1b_ds : %s',l1b_ds)
     # Tiles polynom & variables
     for iburst in l1b_ds['burst'].values:
-        if (burst_type=='intra'):
-            burst_lon_corners = l1b_ds['burst_corner_longitude'].sel(burst=iburst).values.flatten().tolist()
-            burst_lat_corners = l1b_ds['burst_corner_latitude'].sel(burst=iburst).values.flatten().tolist()
-            if np.sum((~np.isfinite(burst_lon_corners)))==0:
-                # Define the burst polygons
-                pts_burst = [geometry.Point(burst_lon_corners[cpt],burst_lat_corners[cpt]) for cpt,_ in enumerate(burst_lon_corners)]
-                pts_burst = [pts_burst[0], pts_burst[1], pts_burst[3], pts_burst[2]]
-                poly_burst = geometry.Polygon(pts_burst)
-                poly_bursts.append(poly_burst)
+        if burst_type == 'intra':
+            if 'burst_corner_longitude' in l1b_ds:
+                burst_lon_corners = l1b_ds['burst_corner_longitude'].sel(burst=iburst).values.flatten().tolist()
+                burst_lat_corners = l1b_ds['burst_corner_latitude'].sel(burst=iburst).values.flatten().tolist()
+                if np.sum((~np.isfinite(burst_lon_corners))) == 0:
+                    # Define the burst polygons
+                    order = [0, 1, 3, 2, 0]
+                    poly_burst = geometry.Polygon(np.stack([np.array(burst_lon_corners)[order], np.array(burst_lat_corners)[order]]).T)
+                    #pts_burst = [geometry.Point(burst_lon_corners[cpt],burst_lat_corners[cpt]) for cpt,_ in enumerate(burst_lon_corners)]
+                    #pts_burst = [pts_burst[0], pts_burst[1], pts_burst[3], pts_burst[2]]
+                    #poly_burst = geometry.Polygon(pts_burst)
+                    poly_bursts.append(poly_burst)
         for itile_sample in l1b_ds['tile_sample'].values:
             for itile_line in l1b_ds['tile_line'].values:
                 # Find lon/lat tile corners
@@ -83,6 +90,7 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0, **kwa
                                                                   tile_line=itile_line).values))
 
     polygons['tiles'] = poly_tiles
+    polygons['bursts'] = poly_bursts
     #
     coordinates['ibursts'] = ibursts
     coordinates['itile_samples'] = itile_samples
@@ -109,7 +117,7 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, ik=0, **kwargs):
     coordinates = {}
     variables = {}
     burst_types = ['intra', 'inter']
-    polygons_varnames = ['swath', 'tiles']
+
     coordinates_varnames = ['ibursts', 'itile_samples', 'itile_lines']
     variable_names = kwargs.get('variable_names', None)
     for burst_type in burst_types:
@@ -122,20 +130,22 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, ik=0, **kwargs):
         for coordinates_varname in coordinates_varnames:
             coordinates[burst_type][coordinates_varname] = []
         # variables
-        if (variable_names[0] is not None):
-            variables[burst_type] = {}
-            for variable_name in variable_names:
-                variables[burst_type][variable_name] = []
+        if variable_names:
+            if variable_names[0] is not None:
+                variables[burst_type] = {}
+                for variable_name in variable_names:
+                    variables[burst_type][variable_name] = []
 
     burst_types = ['intra', 'inter']
     for burst_type in burst_types:
         l1b_ds = xr.open_dataset(l1b_file, group=burst_type + 'burst')
-        if (variable_names[0] is not None):
-            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds,
-                                                                                         variable_names=variable_names,
-                                                                                         ik=ik)
+        if variable_names:
+            if variable_names[0] is not None:
+                _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds,
+                                                                                             variable_names=variable_names,
+                                                                                             ik=ik)
         else:
-            _polygons, _coordinates = get_swath_tiles_polygons_from_l1bgroup(l1b_ds)
+            _polygons, _coordinates, _variables  = get_swath_tiles_polygons_from_l1bgroup(l1b_ds)
 
         # polygons
         for polygons_varname in polygons_varnames:
@@ -146,14 +156,13 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, ik=0, **kwargs):
             coordinates[burst_type][coordinates_varname] = coordinates[burst_type][coordinates_varname] + _coordinates[
                 coordinates_varname]
         # variables
-        if variable_names[0] is not None:
-            for variable_name in variable_names:
-                variables[burst_type][variable_name] = variables[burst_type][variable_name] + _variables[variable_name]
+        if variable_names:
+            if variable_names[0] is not None:
+                for variable_name in variable_names:
+                    variables[burst_type][variable_name] = variables[burst_type][variable_name] + _variables[variable_name]
 
-    if variable_names[0] is not None:
-        return polygons, coordinates, variables
-    else:
-        return polygons, coordinates
+
+    return polygons, coordinates, variables
 
 
 def get_swath_tiles_polygons_from_l1bfiles(l1b_files, ik=0, **kwargs):
@@ -171,9 +180,10 @@ def get_swath_tiles_polygons_from_l1bfiles(l1b_files, ik=0, **kwargs):
     polygons = {}
     coordinates = {}
     variables = {}
+    _polygons = {}
+    _coordinates = None
     _variables = None
     burst_types = ['intra', 'inter']
-    polygons_varnames = ['swath', 'tiles']
     coordinates_varnames = ['ibursts', 'itile_samples', 'itile_lines']
     variable_names = kwargs.get('variable_names', None)
     for burst_type in burst_types:
@@ -186,21 +196,23 @@ def get_swath_tiles_polygons_from_l1bfiles(l1b_files, ik=0, **kwargs):
         for coordinates_varname in coordinates_varnames:
             coordinates[burst_type][coordinates_varname] = []
         # variables
-        if (variable_names[0] is not None):
-            variables[burst_type] = {}
-            for variable_name in variable_names:
-                variables[burst_type][variable_name] = []
+        if variable_names:
+            if variable_names[0] is not None:
+                variables[burst_type] = {}
+                for variable_name in variable_names:
+                    variables[burst_type][variable_name] = []
 
     for l1b_file in l1b_files:
         # Read the file
-        if (variable_names[0] is not None):
-            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bfile(l1b_file,
-                                                                                        variable_names=variable_names,
-                                                                                        ik=ik)
+        if variable_names:
+            if variable_names[0] is not None:
+                _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bfile(l1b_file,
+                                                                                            variable_names=variable_names,
+                                                                                            ik=ik)
         else:
-            _polygons, _coordinates = get_swath_tiles_polygons_from_l1bfile(l1b_file)
+            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bfile(l1b_file)
 
-        # Fill the ouput for each burst_type
+        # Fill the output for each burst_type
         for burst_type in burst_types:
             # polygons
             for polygons_varname in polygons_varnames:
@@ -211,12 +223,11 @@ def get_swath_tiles_polygons_from_l1bfiles(l1b_files, ik=0, **kwargs):
                 coordinates[burst_type][coordinates_varname] = coordinates[burst_type][coordinates_varname] + \
                                                                _coordinates[burst_type][coordinates_varname]
             # variables
-            if (variable_names[0] is not None):
-                for variable_name in variable_names:
-                    variables[burst_type][variable_name] = variables[burst_type][variable_name] + \
-                                                           _variables[burst_type][variable_name]
+            if variable_names:
+                if variable_names[0] is not None:
+                    for variable_name in variable_names:
+                        variables[burst_type][variable_name] = variables[burst_type][variable_name] + \
+                                                               _variables[burst_type][variable_name]
 
-    if variable_names[0] is not None:
-        return polygons, coordinates, variables
-    else:
-        return polygons, coordinates
+
+    return polygons, coordinates, variables
