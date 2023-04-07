@@ -22,7 +22,7 @@ import warnings
 warnings.simplefilter(action='ignore')
 conf = get_conf()
 
-def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version=None, outputdir=None, cwave=True, macs=True, colocat=True,
+def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, macs=True, colocat=True,
                               time_separation='2tau', overwrite=False,dev=False):
     """
 
