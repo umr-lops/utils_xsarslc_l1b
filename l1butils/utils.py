@@ -19,6 +19,7 @@ import warnings
 from functools import wraps
 import time
 import os
+import l1butils
 import numpy as np
 import logging
 from scipy.interpolate import griddata
@@ -29,6 +30,7 @@ from functools import wraps, partial
 import rasterio
 import shutil
 import glob
+import zipfile
 import yaml
 import re
 import datetime
@@ -39,7 +41,8 @@ from importlib_resources import files
 from pathlib import Path
 import fsspec
 import aiohttp
-
+from l1butils.get_config import get_conf
+config = get_conf()
 logger = logging.getLogger('xsar.utils')
 logger.addHandler(logging.NullHandler())
 
@@ -50,30 +53,6 @@ try:
 except ImportError:
     logger.warning("psutil module not found. Disabling memory monitor")
     mem_monitor = False
-
-def _load_config():
-    """
-    load config from default xsar/config.yml file or user ~/.xsar/config.yml
-    Returns
-    -------
-    dict
-    """
-    user_config_file = Path('~/.xsar/config.yml').expanduser()
-    default_config_file = files('xsar').joinpath('config.yml')
-
-    if user_config_file.exists():
-        config_file = user_config_file
-    else:
-        config_file = default_config_file
-
-    config = yaml.load(
-        config_file.open(),
-        Loader=yaml.FullLoader)
-    return config
-
-
-global config
-config = _load_config()
 
 
 
@@ -564,10 +543,43 @@ def url_get(url, cache_dir=os.path.join(config['data_dir'], 'fsspec_cache')):
         with fsspec.open(
                 'filecache::%s' % url,
                 https={'client_kwargs': {'timeout': aiohttp.ClientTimeout(total=3600)}},
-                filecache={'cache_storage': os.path.join(os.path.join(config['data_dir'], 'fsspec_cache'))}
+                #filecache={'cache_storage': os.path.join(os.path.join(config['data_dir'], 'fsspec_cache'))}
         ) as f:
             fname = f.name
     else:
         fname = url
 
     return fname
+
+
+def get_test_file(fname):
+    """
+    get test file from  https://cyclobs.ifremer.fr/static/sarwing_datarmor/xsardata/
+    file is unzipped and extracted to `config['data_dir']`
+
+    Parameters
+    ----------
+    fname: str
+        file name to get (without '.zip' extension)
+
+    Returns
+    -------
+    str
+        path to file, relative to `config['data_dir']`
+
+    """
+    final = None
+    #res_path = config['data_dir']
+    res_path = os.path.join(os.path.dirname(os.path.dirname(l1butils.__file__)),'assests')
+    #base_url = 'https://cyclobs.ifremer.fr/static/sarwing_datarmor/xsardata'
+    base_url = 'https://cerweb.ifremer.fr/datarmor/sarwave/documentation/processor/sar/l1butils/example_products/iw/slc/l1b/'
+    file_url = '%s/%s.zip' % (base_url, fname)
+    if not os.path.exists(os.path.join(res_path, fname)):
+        warnings.warn("Downloading %s" % file_url)
+        local_file = url_get(file_url)
+        warnings.warn("Unzipping %s" % os.path.join(res_path, fname))
+        final = os.path.join(res_path, fname)
+        #shutil.move(local_file,final)
+        with zipfile.ZipFile(local_file, 'r') as zip_ref:
+             zip_ref.extractall(res_path)
+    return final
