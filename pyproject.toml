@@ -1,0 +1,42 @@
+[project]
+name = "l1butils"
+requires-python = ">= 3.9"
+description = "Python library to exploit SAR IFREMER L1B products"
+readme.file = "README.md"
+readme.content-type = "text/markdown"
+license = {text = "GPL-3.0"}
+keywords = ["SAR", "wave", "reseach", "cross-spectra"]
+authors = [
+  {name = "Alexis Mouche"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "xarray",
+    "numpy",
+    "netCDF4",
+    "shapely",
+    "xrft",
+    "xarray-datatree",
+    "importlib_resources",
+    'tqdm'
+]
+dynamic = ["version"]
+
+[build-system]
+requires = ["setuptools>=64.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["l1butils"]
+
+[tool.setuptools_scm]
+fallback_version = "999"
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+float_to_top = true
+default_section = "THIRDPARTY"
+known_first_party = "l1butils"
