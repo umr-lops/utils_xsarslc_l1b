@@ -568,17 +568,17 @@ def get_test_file(fname):
         path to file, relative to `config['data_dir']`
 
     """
-    final = None
     #res_path = config['data_dir']
     res_path = os.path.join(os.path.dirname(os.path.dirname(l1butils.__file__)),'assests')
     #base_url = 'https://cyclobs.ifremer.fr/static/sarwing_datarmor/xsardata'
     base_url = 'https://cerweb.ifremer.fr/datarmor/sarwave/documentation/processor/sar/l1butils/example_products/iw/slc/l1b/'
     file_url = '%s/%s.zip' % (base_url, fname)
+    final = os.path.join(res_path, fname)
     if not os.path.exists(os.path.join(res_path, fname)):
         warnings.warn("Downloading %s" % file_url)
         local_file = url_get(file_url)
-        warnings.warn("Unzipping %s" % os.path.join(res_path, fname))
-        final = os.path.join(res_path, fname)
+        warnings.warn("Unzipping %s" % final)
+
         #shutil.move(local_file,final)
         with zipfile.ZipFile(local_file, 'r') as zip_ref:
              zip_ref.extractall(res_path)
