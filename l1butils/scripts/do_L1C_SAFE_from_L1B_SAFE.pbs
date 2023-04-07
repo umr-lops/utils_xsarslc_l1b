@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#PBS -l walltime=20:40:00
+#PBS -l mem=3g
+#PBS -N L1B-L1C
+#PBS -m n
+
+echo start
+# inputs
+#$1 str l1bsafe
+#$2 str version of the run: 1.5 for instance
+
+myvariable=$(whoami)
+. /appli/anaconda/latest/etc/profile.d/conda.sh
+conda activate /home/datawork-cersat-public/cache/project/mpc-sentinel1/workspace/mamba/envs/xsar_oct22
+echo 'which python?'
+which python
+
+exe=do_L1C_SAFE_from_L1B_SAFE
+
+$exe --overwrite  --version $2 --l1bsafe $1

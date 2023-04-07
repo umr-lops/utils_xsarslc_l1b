@@ -40,3 +40,6 @@ skip_gitignore = true
 float_to_top = true
 default_section = "THIRDPARTY"
 known_first_party = "l1butils"
+
+[project.scripts]
+do_L1C_SAFE_from_L1B_SAFE = "l1butils.scripts.do_L1C_SAFE_from_L1B_SAFE:main"
