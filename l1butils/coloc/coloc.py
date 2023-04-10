@@ -13,6 +13,19 @@ from shapely import geometry
 from datatree import DataTree
 
 def raster_cropping_in_polygon_bounding_box(poly_tile, raster_ds,enlarge=True,step=1):
+    """
+
+    Parameters
+    ----------
+    poly_tile
+    raster_ds
+    enlarge
+    step
+
+    Returns
+    -------
+
+    """
     
     lon1, lat1, lon2, lat2 = poly_tile.exterior.bounds
     lon_range = [lon1, lon2]
