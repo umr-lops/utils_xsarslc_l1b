@@ -1,4 +1,6 @@
 import argparse
+import pdb
+
 import l1butils
 from l1butils.raster_readers import ecmwf_0100_1h
 from l1butils.raster_readers import ww3_global_yearly_3h
@@ -79,14 +81,14 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
     for ii in pbar:
         pbar.set_description('')
         l1b_fullpath = files[ii]
-        l1c_full_path = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
+        l1c_full_path,l1b_product_version = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
         if os.path.exists(l1c_full_path) and overwrite is False:
             logging.info('%s already exists', l1c_full_path)
         else:
             ds_intra = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
                                               colocat=colocat,
                                               time_separation=time_separation)
-            save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version)
+            save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version,version_L1B=l1b_product_version)
             logging.info('successfully wrote  %s',l1c_full_path)
     return 0
 
@@ -190,8 +192,9 @@ def append_ancillary_field(ancillary, ds_intra):
             raster_ds = ww3_global_yearly_3h(filename, closest_date)
 
         # Get the polygons of the swath data
-        polygons = get_swath_tiles_polygons_from_l1bgroup(ds_intra, swath_only=True)
+        polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(ds_intra, swath_only=True)
         # Crop the raster to the swath bounding box limit
+
         raster_bb_ds = raster_cropping_in_polygon_bounding_box(polygons['swath'][0], raster_ds)
 
         # Loop on the grid in the product
@@ -234,21 +237,22 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     # Output filename
     l1c_full_path = os.path.join(pathout, os.path.basename(l1b_fullpath).replace('L1B', 'L1C'))
     lastpiece = l1c_full_path.split('_')[-1]
+    l1b_product_version = lastpiece.replace('.nc','')
     l1c_full_path = l1c_full_path.replace(lastpiece, version + '.nc')
     logging.info('File out: %s ', l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
-    return l1c_full_path
+    return l1c_full_path,l1b_product_version
 
 
-def save_l1c_to_netcdf(l1c_full_path, ds_intra, version):
+def save_l1c_to_netcdf(l1c_full_path, ds_intra, version,version_L1B):
     """
 
     Args:
         l1c_full_path: str
         ds_intra: xr.Dataset intra burst
         version : str (e.g. 1.4)
-
+        version_L1B : str  (e.g. 1.4)
     Returns:
 
     """
@@ -260,9 +264,11 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, version):
     dt[burst_type + 'burst'] = DataTree(data=ds_intra)
 
     dt.attrs['version_l1butils'] = l1butils.__version__
-    dt.attrs['product_version'] = version
+    dt.attrs['L1C_product_version'] = version
     dt.attrs['processor'] = __file__
     dt.attrs['generation_date'] = datetime.today().strftime('%Y-%b-%d')
+    dt.attrs['L1B_product_version'] = version_L1B
+
     #
     # Saving the results in netCDF
     dt.to_netcdf(l1c_full_path)
