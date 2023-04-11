@@ -43,3 +43,4 @@ known_first_party = "l1butils"
 
 [project.scripts]
 do_L1C_SAFE_from_L1B_SAFE = "l1butils.scripts.do_L1C_SAFE_from_L1B_SAFE:main"
+do_WV_L1C_SAFE_from_L1B_SAFE = "l1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE:main"
