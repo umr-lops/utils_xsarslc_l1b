@@ -16,6 +16,6 @@ conda activate /home/datawork-cersat-public/project/mpc-sentinel1/workspace/mamb
 echo 'which python?'
 which python
 
-exe=do_L1C_SAFE_from_L1B_SAFE
+exe=do_WV_L1C_SAFE_from_L1B_SAFE
 
 $exe --overwrite  --version $2 --l1bsafe $1
