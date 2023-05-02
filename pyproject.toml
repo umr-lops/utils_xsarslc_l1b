@@ -1,5 +1,5 @@
 [project]
-name = "l1butils"
+name = "slcl1butils"
 requires-python = ">= 3.9"
 description = "Python library to exploit SAR IFREMER L1B products"
 readme.file = "README.md"
@@ -29,7 +29,7 @@ requires = ["setuptools>=64.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["l1butils"]
+packages = ["slcl1butils"]
 
 [tool.setuptools_scm]
 fallback_version = "999"
@@ -39,8 +39,9 @@ profile = "black"
 skip_gitignore = true
 float_to_top = true
 default_section = "THIRDPARTY"
-known_first_party = "l1butils"
+known_first_party = "slcl1butils"
 
 [project.scripts]
-do_L1C_SAFE_from_L1B_SAFE = "l1butils.scripts.do_L1C_SAFE_from_L1B_SAFE:main"
-do_WV_L1C_SAFE_from_L1B_SAFE = "l1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE:main"
+do_L1C_SAFE_from_L1B_SAFE = "slcl1butils.scripts.do_L1C_SAFE_from_L1B_SAFE:main"
+do_WV_L1C_SAFE_from_L1B_SAFE = "slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE:main"
+stack_WV_L1C_to_ZARR = 'slcl1butils.compute.stack_wv_l1c_monthly:main'

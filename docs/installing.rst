@@ -17,7 +17,7 @@ conda install
 
     conda create -n l1butilsenv
     conda activate l1butilsenv
-    conda install -c conda-forge l1butils
+    conda install -c conda-forge slcl1butils
 
 
 pip install

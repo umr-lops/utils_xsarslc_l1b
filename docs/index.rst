@@ -1,8 +1,8 @@
 ############################################################################
-l1butils: functions to play with IFREMER L1B Sentinel-1 SLC SAR products
+slcl1butils: functions to play with IFREMER L1B Sentinel-1 SLC SAR products
 ############################################################################
 
-**l1butils** is a library to exploit level 1-B SAR SLC products. Objets manipulated are all `xarray`_.
+**slcl1butils** is a library to exploit level 1-B SAR SLC products. Objets manipulated are all `xarray`_.
 
 Acquisition modes available in L1B IFREMER product family are IW and WV.
 
@@ -28,7 +28,7 @@ Documentation
 Overview
 ........
 
-    **l1butils**  helps to read L1B products (especially IW TOPS Scan SAR acquistions) containing both intra burst and
+    **slcl1butils**  helps to read L1B products (especially IW TOPS Scan SAR acquistions) containing both intra burst and
     inter (i.e. overlapping bursts) burst cross spectrum.
 
 

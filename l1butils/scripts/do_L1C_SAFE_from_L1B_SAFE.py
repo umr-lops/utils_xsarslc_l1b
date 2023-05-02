@@ -1,8 +1,8 @@
 import argparse
-import l1butils
-from l1butils.raster_readers import ecmwf_0100_1h
-from l1butils.raster_readers import ww3_global_yearly_3h
-from l1butils.raster_readers import resource_strftime
+import slcl1butils
+from slcl1butils.raster_readers import ecmwf_0100_1h
+from slcl1butils.raster_readers import ww3_global_yearly_3h
+from slcl1butils.raster_readers import resource_strftime
 from datetime import datetime, timedelta
 from glob import glob
 import numpy as np
@@ -11,12 +11,12 @@ from datatree import DataTree
 import time
 import logging
 import sys, os
-from l1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
-from l1butils.coloc.coloc import raster_cropping_in_polygon_bounding_box, coloc_tiles_from_l1bgroup_with_raster
-from l1butils.compute.compute_from_l1b import compute_xs_from_l1b
-from l1butils.compute.cwave import compute_cwave_parameters
-from l1butils.compute.macs import compute_macs
-from l1butils.get_config import get_conf
+from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
+from slcl1butils.coloc.coloc import raster_cropping_in_polygon_bounding_box, coloc_tiles_from_l1bgroup_with_raster
+from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
+from slcl1butils.compute.cwave import compute_cwave_parameters
+from slcl1butils.compute.macs import compute_macs
+from slcl1butils.get_config import get_conf
 from tqdm import tqdm
 import warnings
 warnings.simplefilter(action='ignore')
@@ -254,7 +254,7 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter,version):
     burst_type = 'inter'
     dt[burst_type + 'burst'] = DataTree(data=ds_inter)
 
-    dt.attrs['version_l1butils'] = l1butils.__version__
+    dt.attrs['version_slcl1butils'] = slcl1butils.__version__
     dt.attrs['product_version'] = version
     dt.attrs['processor'] = __file__
     dt.attrs['generation_date'] = datetime.today().strftime('%Y-%b-%d')

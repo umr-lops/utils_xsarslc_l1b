@@ -1,9 +1,9 @@
 import pdb
-from l1butils.raster_readers import ecmwf_0100_1h
-from l1butils.raster_readers import ww3_global_yearly_3h
-from l1butils.raster_readers import resource_strftime
+from slcl1butils.raster_readers import ecmwf_0100_1h
+from slcl1butils.raster_readers import ww3_global_yearly_3h
+from slcl1butils.raster_readers import resource_strftime
 import sys, os
-from l1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
+from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
 from datetime import datetime, timedelta
 from glob import glob
 import numpy as np
