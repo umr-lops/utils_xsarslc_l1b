@@ -4,9 +4,9 @@ import numpy as np
 import logging
 import sys
 from matplotlib import colors as mcolors
-from l1butils.conversion_polar_cartesian import from_xCartesianSpectrum
-from l1butils import spectrum_clockwise_to_trigo
-from l1butils import spectrum_rotation
+from slcl1butils.conversion_polar_cartesian import from_xCartesianSpectrum
+from slcl1butils import spectrum_clockwise_to_trigo
+from slcl1butils import spectrum_rotation
 from spectra_plot_circles_wavenumbers import circle_plot
 def draw_signal_and_grid(slc,splitting_image,one_tiff,variable_displayed='digital_number'):
     """

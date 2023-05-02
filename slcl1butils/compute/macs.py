@@ -25,8 +25,11 @@ def compute_macs(xs, lambda_range_max=[50.]):
                                            k_rg=slice(2 * np.pi / _lambda_range_max, k_rg_max)).real.mean(
         dim=['k_az', 'k_rg']).assign_coords({'lambda_range_max_macs': _lambda_range_max}).expand_dims(
         'lambda_range_max_macs') for ik, _lambda_range_max in enumerate(lambda_range_max)])
-    im_macs = im_macs.rename('macs_Im').drop_vars('pol')
-    re_macs = re_macs.rename('macs_Re').drop_vars('pol')
+    im_macs = im_macs.rename('macs_Im')
+    re_macs = re_macs.rename('macs_Re')
+    if 'pol' in im_macs:
+        im_macs = im_macs.drop_vars('pol')
+        re_macs = re_macs.drop_vars('pol')
 
     macs = xr.merge([im_macs, re_macs])
 

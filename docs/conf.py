@@ -16,12 +16,12 @@
 
 
 # -- Project information -----------------------------------------------------
-import l1butils
+import slcl1butils
 
-project = 'l1butils'
+project = 'slcl1butils'
 copyright = '2023, Ifremer LOPS/SIAM'
 author = 'Alexis Mouche'
-version = l1butils.__version__
+version = slcl1butils.__version__
 
 # -- General configuration ---------------------------------------------------
 
@@ -76,7 +76,7 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-html_style = 'css/l1butils.css'
+html_style = 'css/slcl1butils.css'
 
 #html_logo = "_static/logo.png"
 html_theme_options = {

@@ -19,7 +19,7 @@ import warnings
 from functools import wraps
 import time
 import os
-import l1butils
+import slcl1butils
 import numpy as np
 import logging
 from scipy.interpolate import griddata
@@ -41,7 +41,7 @@ from importlib_resources import files
 from pathlib import Path
 import fsspec
 import aiohttp
-from l1butils.get_config import get_conf
+from slcl1butils.get_config import get_conf
 config = get_conf()
 logger = logging.getLogger('xsar.utils')
 logger.addHandler(logging.NullHandler())
@@ -569,7 +569,7 @@ def get_test_file(fname):
 
     """
     #res_path = config['data_dir']
-    res_path = os.path.join(os.path.dirname(os.path.dirname(l1butils.__file__)),'assests')
+    res_path = os.path.join(os.path.dirname(os.path.dirname(slcl1butils.__file__)),'assests')
     #base_url = 'https://cyclobs.ifremer.fr/static/sarwing_datarmor/xsardata'
     base_url = 'https://cerweb.ifremer.fr/datarmor/sarwave/documentation/processor/sar/l1butils/example_products/iw/slc/l1b/'
     file_url = '%s/%s.zip' % (base_url, fname)
@@ -583,3 +583,19 @@ def get_test_file(fname):
         with zipfile.ZipFile(local_file, 'r') as zip_ref:
              zip_ref.extractall(res_path)
     return final
+
+def get_memory_usage():
+    """
+
+    Returns
+    -------
+
+    """
+    try:
+        import resource
+        memory_used_go = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000. / 1000.
+    except:  # on windows resource is not usable
+        import psutil
+        memory_used_go = psutil.virtual_memory().used / 1000 / 1000 / 1000.
+    str_mem = 'RAM usage: %1.1f Go' % memory_used_go
+    return str_mem

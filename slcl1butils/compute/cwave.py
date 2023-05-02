@@ -49,12 +49,19 @@ def compute_kernel(krg, kaz, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 * np
     Kernel = Gnk * Fnphi * eta
     Kernel.k_gp.attrs.update({'long_name': 'Gegenbauer polynoms dimension'})
     Kernel.phi_hf.attrs.update({'long_name': 'Harmonic functions dimension (odd number)'})
-    _Kernel = Kernel.rename('cwave_kernel').to_dataset().drop_vars('pol')
+
+    _Kernel = Kernel.rename('cwave_kernel').to_dataset()
+    if 'pol' in _Kernel:
+        _Kernel = _Kernel.drop_vars('pol')
     _Kernel['cwave_kernel'].attrs.update({'long_name': 'CWAVE Kernel'})
 
-    ds_G = Gnk.rename('Gegenbauer_polynoms').to_dataset().drop_vars('pol')
-    ds_F = Fnphi.rename('Harmonic_functions').to_dataset().drop_vars('pol')
-    ds_eta = eta.rename('eta').to_dataset().drop_vars('pol')
+    ds_G = Gnk.rename('Gegenbauer_polynoms').to_dataset()
+    ds_F = Fnphi.rename('Harmonic_functions').to_dataset()
+    ds_eta = eta.rename('eta').to_dataset()
+    if 'pol' in ds_G:
+        ds_G = ds_G.drop_vars('pol')
+        ds_F = ds_F.drop_vars('pol')
+        ds_eta = ds_eta.drop_vars('pol')
 
     Kernel = xr.merge([_Kernel, ds_G, ds_F, ds_eta])
 

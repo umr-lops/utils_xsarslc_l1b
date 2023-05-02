@@ -5,15 +5,15 @@ from matplotlib import pyplot as plt
 from matplotlib import colors as mcolors
 cmap = mcolors.LinearSegmentedColormap.from_list("", ["white","violet","mediumpurple","cyan","springgreen","yellow","red"])
 import numpy as np
-from l1butils import  conversion_polar_cartesian
-from l1butils import spectrum_clockwise_to_trigo
+from slcl1butils import  conversion_polar_cartesian
+from slcl1butils import spectrum_clockwise_to_trigo
 try:
     import display_xspectra_grid
 except:
     pass #TODO fix this dependency keep or let
-from  l1butils import spectrum_rotation
-from l1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
-import l1butils.plotting.add_azimuth_cutoff_lines_on_polar_spec_fig #wavetoolbox
+from slcl1butils import spectrum_rotation
+from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
+#import slcl1butils.plotting.add_azimuth_cutoff_lines_on_polar_spec_fig #wavetoolbox
 reference_oswK_1145m_60pts = np.array([0.005235988, 0.00557381, 0.005933429, 0.00631625, 0.00672377,
     0.007157583, 0.007619386, 0.008110984, 0.008634299, 0.009191379,
     0.0097844, 0.01041568, 0.0110877, 0.01180307, 0.01256459, 0.01337525,
