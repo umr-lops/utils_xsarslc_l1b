@@ -99,15 +99,18 @@ def preprrocess(filee,indkrg,indkaz_bo,indkaz_up,k_rg_ref,k_az_ref,typee,tiffnum
         for tautau in range(3):
             dsu['xspectra_%stau' % tautau] = dsu['xspectra_%stau_Re' % tautau] + 1j * dsu['xspectra_%stau_Im' % tautau]
             dsu = dsu.drop(['xspectra_%stau_Re' % tautau, 'xspectra_%stau_Im' % tautau])
+    dsu = dsu.drop(['xspectra_0tau','xspectra_1tau','var_xspectra_0tau','var_xspectra_1tau','var_xspectra_2tau'])
+    dsu['xspectra_2tau'] = dsu['xspectra_2tau'].mean(dim=['2tau'])
     return dsu
 
-def read_data_L1B(all_l1B, typee='intra'):
+def read_data_L1B(all_l1B, typee='intra',sens='Ascending'):
     """
 
     Parameters
     ----------
     all_l1B list of str
     typee str intra or inter [optional]
+    sens str : Ascending or Descending
 
     Returns
     -------
@@ -126,26 +129,30 @@ def read_data_L1B(all_l1B, typee='intra'):
         pbar.set_description('')
         #for ffi,ff in enumerate(all_l1B):
         ff = all_l1B[ffi]
-        tmpds = preprrocess(ff, indkrg, indkaz_bo, indkaz_up, k_rg_ref, k_az_ref, typee,tiffnumber=ffi)
-        if 'freq_line' in tmpds.dims:
+        tmpds = xr.open_dataset(ff,group=typee+'burst',engine='netcdf4')
+        if 'freq_line' in tmpds.dims and tmpds.orbit_pass==sens and 'xspectra_2tau_Re' in tmpds:
+            tmpds = preprrocess(ff, indkrg, indkaz_bo, indkaz_up, k_rg_ref, k_az_ref, typee, tiffnumber=ffi)
             consolidated_list.append(ff)
             tmp.append(tmpds)
         else:
-            logging.warning('%s seems empty',ff)
+            logging.debug('%s seems empty or not in right orbit direction',ff)
 
     # print('nb nc file to read',len(consolidated_list))
     #ds = xr.concat(tmp,dim='tiff')
-    # feinte FN (on remplace des index de coords par des vrais coords) pcq xr.align ne gere pas bien cela
-    tmp2 = [
-        x.assign_coords({'tile_sample': range(x.sizes['tile_sample']), 'tile_line': range(x.sizes['tile_line'])}) for x
-        in tmp]  # coords assignement is for alignment below
-    dims_not_align = set()
-    for x in tmp2:
-        dims_not_align = dims_not_align.union(set(x.dims))
-    dims_not_align = dims_not_align - set(['tile_sample', 'tile_line'])
-    tmp3 = xr.align(*tmp2, exclude=dims_not_align,
-                        join='outer')  # tile sample/line are aligned (thanks to their coordinate value) to avoid bug in combine_by_coords below
-    # end feinte Fred
-    ds = xr.combine_by_coords([tt.expand_dims('tiff').expand_dims('subswath') for tt in tmp3],combine_attrs='drop_conflicts')
-    #ds = xr.open_mfdataset(consolidated_list,combine='by_coords',preprocess=xx)
+    feinte_combine_by_coords = True
+    if feinte_combine_by_coords:
+        # feinte FN (on remplace des index de coords par des vrais coords) pcq xr.align ne gere pas bien cela
+        tmp2 = [
+            x.assign_coords({'tile_sample': range(x.sizes['tile_sample']), 'tile_line': range(x.sizes['tile_line'])}) for x
+            in tmp]  # coords assignement is for alignment below
+        dims_not_align = set()
+        for x in tmp2:
+            dims_not_align = dims_not_align.union(set(x.dims))
+        dims_not_align = dims_not_align - set(['tile_sample', 'tile_line'])
+        tmp3 = xr.align(*tmp2, exclude=dims_not_align,
+                            join='outer')  # tile sample/line are aligned (thanks to their coordinate value) to avoid bug in combine_by_coords below
+        # end feinte Fred
+        ds = xr.combine_by_coords([tt.expand_dims('tiff').expand_dims('subswath') for tt in tmp3],combine_attrs='drop_conflicts')
+    else:
+        ds = xr.concat(tmp,dim='dummydim')
     return ds
