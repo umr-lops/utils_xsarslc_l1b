@@ -40,7 +40,7 @@ extensions = [
 autodoc_member_order = 'bysource'
 
 # Napoleon settings
-napoleon_google_docstring = True
+napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = False
 napoleon_include_private_with_doc = False
@@ -52,6 +52,17 @@ napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_type_aliases = None
+
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3/", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "dask": ("https://docs.dask.org/en/latest", None),
+    "xarray": ("https://docs.xarray.dev/en/latest/", None),
+    "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
+    "datatree": ("https://xarray-datatree.readthedocs.io/en/latest/", None)
+}
 
 
 # Add any paths that contain templates here, relative to this directory.
