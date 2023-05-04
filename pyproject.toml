@@ -17,7 +17,6 @@ dependencies = [
     "numpy",
     "netCDF4",
     "shapely",
-    "xrft",
     "xarray-datatree",
     "importlib_resources",
     'tqdm'
