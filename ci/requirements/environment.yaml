@@ -17,7 +17,6 @@ dependencies:
   - hypothesis
   - coverage
   # I/O
-  - rioxarray
   - h5netcdf
   - zarr
   - scipy
@@ -31,5 +30,4 @@ dependencies:
   # processing
   - more-itertools
   - tqdm
-  - lxml
   - importlib_resources
