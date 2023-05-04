@@ -41,6 +41,6 @@ default_section = "THIRDPARTY"
 known_first_party = "slcl1butils"
 
 [project.scripts]
-do_L1C_SAFE_from_L1B_SAFE = "slcl1butils.scripts.do_L1C_SAFE_from_L1B_SAFE:main"
+do_IW_L1C_SAFE_from_L1B_SAFE = "slcl1butils.scripts.do_IW_L1C_SAFE_from_L1B_SAFE:main"
 do_WV_L1C_SAFE_from_L1B_SAFE = "slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE:main"
 stack_WV_L1C_to_ZARR = 'slcl1butils.compute.stack_wv_l1c_monthly:main'
