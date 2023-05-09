@@ -14,6 +14,13 @@ def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau'):
         ds = xr.open_dataset(_file, group=burst_type + 'burst')
 
     # ds = dt[burst_type+'burst_xspectra'].to_dataset()
+    # drop variables
+    list_to_drop = ['var_xspectra_0tau','var_xspectra_1tau','var_xspectra_2tau']
+    for toto in range(0,2):
+        if int(time_separation[0]) != toto:
+            list_to_drop.append('xspectra_' + str(toto)+'tau' + '_Re')
+            list_to_drop.append('xspectra_' + str(toto) + 'tau' + '_Im')
+    ds = ds.drop_vars(list_to_drop)
 
     if burst_type == 'intra' or burst_type == '':
         xsRe = ds['xspectra_' + time_separation + '_Re']  # +1j*ds_intra['xspectra_1tau_Im']).mean(dim=['1tau'])
