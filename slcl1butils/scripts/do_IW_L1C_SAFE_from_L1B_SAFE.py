@@ -17,6 +17,7 @@ from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
 from slcl1butils.compute.cwave import compute_cwave_parameters
 from slcl1butils.compute.macs import compute_macs
 from slcl1butils.get_config import get_conf
+from collections import defaultdict
 from tqdm import tqdm
 import warnings
 warnings.simplefilter(action='ignore')
@@ -73,8 +74,10 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
     if dev:
         logging.info('dev mode -> only one L1B file to treat')
         files = files[0:1]
+    cpt = defaultdict(int)
     pbar = tqdm(range(len(files)))
     for ii in pbar:
+        cpt['L1B_traeted'] += 1
         pbar.set_description('')
         l1b_fullpath = files[ii]
         l1c_full_path = get_l1c_filepath(l1b_fullpath,version=version, outputdir=outputdir)
@@ -84,7 +87,13 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
             ds_intra, ds_inter = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=cwave, macs=macs,
                                                         colocat=colocat,
                                                         time_separation=time_separation)
-            save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter,version=version)
+            if 'xspectra' in ds_inter:
+                save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter,version=version)
+                cpt['saved_in_nc'] += 1
+            else:
+                logging.info('there is no xspectra in this subswath -> the L1C will not be saved')
+                cpt['L1B_without_spectra'] += 1
+    logging.info('cpt: %s',cpt)
     return 0
 
 
@@ -110,7 +119,7 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     # ====================
     # CWAVE
     # ====================
-    if cwave:
+    if cwave and xs_intra is not None and xs_inter is not None:
         #
         # CWAVE Processing Parameters
         kmax = 2 * np.pi / 25
@@ -130,7 +139,7 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     # ====================
     # MACS
     # ====================
-    if macs:
+    if macs and xs_intra is not None and xs_inter is not None:
         # MACS parameters
         lambda_range_max = [50, 75, 100, 125, 150, 175, 200, 225, 250, 275]
         # Intraburst at 2tau MACS
