@@ -19,7 +19,8 @@ dependencies = [
     "shapely",
     "xarray-datatree",
     "importlib_resources",
-    'tqdm'
+    'tqdm',
+    "zarr"
 ]
 dynamic = ["version"]
 
