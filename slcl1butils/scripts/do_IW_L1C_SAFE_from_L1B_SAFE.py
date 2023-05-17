@@ -84,10 +84,11 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
         if os.path.exists(l1c_full_path) and overwrite is False:
             logging.info('%s already exists', l1c_full_path)
         else:
-            ds_intra, ds_inter = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=cwave, macs=macs,
+            ds_intra, ds_inter = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
                                                         colocat=colocat,
                                                         time_separation=time_separation)
-            if 'macs_Im' in ds_inter: # if macs is not computed -> XS not available -> no need to create L1C
+
+            if 'xspectra_Re' in ds_inter:
                 save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter,version=version)
                 cpt['saved_in_nc'] += 1
             else:
@@ -179,7 +180,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
 
     # Get the polygons of the swath data
-    polygons = get_swath_tiles_polygons_from_l1bgroup(ds_intra, swath_only=True)
+    polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(ds_intra, swath_only=True)
     # Crop the raster to the swath bounding box limit
     raster_bb_ds = raster_cropping_in_polygon_bounding_box(polygons['swath'][0], raster_ds)
 
@@ -204,7 +205,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             # ds_inter_list.append(_ds_inter)
             # Merging the datasets
             ds_inter = xr.merge([ds_inter, _ds_inter])
-
+    logging.info('ancillary fields added')
     return ds_intra, ds_inter
 
 

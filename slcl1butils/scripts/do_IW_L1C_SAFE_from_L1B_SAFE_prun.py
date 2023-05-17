@@ -16,6 +16,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='start prun')
     parser.add_argument('--verbose', action='store_true', default=False)
+    parser.add_argument('--outputdir', action='store', default=None,required=False)
     parser.add_argument('--version', type=str,
                         help='version of the run e.g. 1.5', required=True)
     args = parser.parse_args()
@@ -27,16 +28,19 @@ if __name__ == '__main__':
                             datefmt='%d/%m/%Y %H:%M:%S')
     prunexe = '/appli/prun/bin/prun'
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k.txt' # 5781 SAFE, 632Go en L1B
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v2.txt' 
+    logging.info('outputdir : %s',args.outputdir)
     # modify initial listing with more args
     listing2 = listing + '.modified'
     fid = open(listing2, 'w')
     content = open(listing).readlines()
     taille = len(content)
     for ll in content:
-        ll2 = ll.replace('\n', '') + ' ' + args.version + '\n'
+        ll2 = ll.replace('\n', '') + ' ' + args.version +' '+ args.outputdir + '\n'
         fid.write(ll2)
     fid.close()
-    pbs = os.path.join(__file__,'do_IW_L1C_SAFE_from_L1B_SAFE.pbs')
+    didi = os.path.dirname(os.path.realpath(__file__))
+    pbs = os.path.join(didi,'do_IW_L1C_SAFE_from_L1B_SAFE.pbs')
     logging.info('pbs file: %s',pbs)
     # call prun
     if taille < 9999:
