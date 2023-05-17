@@ -31,3 +31,6 @@ dependencies:
   - more-itertools
   - tqdm
   - importlib_resources
+  #plotting
+  - holoviews
+  - geoviews
