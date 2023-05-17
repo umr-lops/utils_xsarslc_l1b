@@ -1,6 +1,4 @@
 import argparse
-import pdb
-
 import slcl1butils
 from slcl1butils.raster_readers import ecmwf_0100_1h
 from slcl1butils.raster_readers import ww3_global_yearly_3h
