@@ -168,6 +168,8 @@ def stack_wv_l1c_per_month(list_SAFEs,dev=False,keep_xspectrum=False):
         for safe_xsp in  list_SAFEs:
             lst_nc_l1c = glob.glob(os.path.join(safe_xsp,'*nc'))
             logging.debug('nb nc : %s',len(lst_nc_l1c))
+            if len(lst_nc_l1c)==0:
+                logging.warning('empty safe: %s',safe_xsp)
             if keep_xspectrum and k_rg_ref is None:
                 #dsfirst = xr.open_dataset(lst_nc_l1c[0], group='intraburst', engine='netcdf4', cache=False)
                 dt = datatree.open_datatree(lst_nc_l1c[0])
@@ -255,6 +257,7 @@ def main():
     logging.info('outputdir: %s', args.outputdir)
     startdate = datetime.datetime.strptime(args.month,'%Y%m').replace(day=1)
     stopdate = startdate + relativedelta.relativedelta(months=1)
+    logging.info('startdate %s -> %s stopdate',startdate,stopdate)
     outputfile = os.path.join(args.outputdir,args.sar+'_WV_L1C_monthly_%s_%s.zarr'%(args.month,args.pol))
     if os.path.exists(outputfile) and args.overwrite is False:
         logging.info('%s already exists',outputfile)
