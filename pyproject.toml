@@ -20,7 +20,8 @@ dependencies = [
     "xarray-datatree",
     "importlib_resources",
     'tqdm',
-    "zarr"
+    "zarr",
+    'fsspec'
 ]
 dynamic = ["version"]
 
