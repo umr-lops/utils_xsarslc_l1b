@@ -78,18 +78,25 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
         logging.info('dev mode -> only one L1B file to treat')
         files = files[0:1]
     pbar = tqdm(range(len(files)))
+    cpt_success = 0
+    cpt_already = 0
+    cpt_ancillary_products_found = 0
     for ii in pbar:
-        pbar.set_description('')
+        pbar.set_description('sucess: %s/%s ancillary : %s, already: %s'%(cpt_success,len(files),cpt_ancillary_products_found,cpt_already))
         l1b_fullpath = files[ii]
         l1c_full_path,l1b_product_version = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
         if os.path.exists(l1c_full_path) and overwrite is False:
-            logging.info('%s already exists', l1c_full_path)
+            logging.debug('%s already exists', l1c_full_path)
+            cpt_already += 1
         else:
-            ds_intra = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
+            ds_intra,ancillary_product_found = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
                                               colocat=colocat,
                                               time_separation=time_separation)
+            if ancillary_product_found:
+                cpt_ancillary_products_found += 1
             save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version,version_L1B=l1b_product_version)
-            logging.info('successfully wrote  %s',l1c_full_path)
+            logging.debug('successfully wrote  %s',l1c_full_path)
+            cpt_success += 1
     return 0
 
 
@@ -111,7 +118,8 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
 
     """
 
-    logging.info('File in: %s', l1b_fullpath)
+    logging.debug('File in: %s', l1b_fullpath)
+    ancillary_product_found = False
     if ancillary_list is None:
         ancillary_list = []
     # ====================
@@ -156,9 +164,9 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     # ====================
     if colocat:
         for ancillary in ancillary_list:
-            ds_intra = append_ancillary_field(ancillary, ds_intra)
+            ds_intra,ancillary_product_found = append_ancillary_field(ancillary, ds_intra)
 
-    return ds_intra
+    return ds_intra,ancillary_product_found
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -173,6 +181,7 @@ def append_ancillary_field(ancillary, ds_intra):
     -------
 
     """
+    ancillary_product_found = False
     # For each L1B
     # l1b_ds = xr.open_dataset(_file,group=burst_type+'burst')
 
@@ -182,9 +191,10 @@ def append_ancillary_field(ancillary, ds_intra):
     sar_date = datetime.strptime(str.split(ds_intra.attrs['start_date'], '.')[0], '%Y-%m-%d %H:%M:%S')
     closest_date, filename = resource_strftime(ancillary['resource'], step=ancillary['step'], date=sar_date)
     if len(glob(filename)) != 1:
-        logging.info('no ancillary files matching %s', filename)
+        logging.debug('no ancillary files matching %s', filename)
     else:
         raster_ds = None
+        ancillary_product_found = True
         # Getting the raster from anxillary data
         if ancillary['name'] == 'ecmwf_0100_1h':
             raster_ds = ecmwf_0100_1h(filename)
@@ -211,7 +221,7 @@ def append_ancillary_field(ancillary, ds_intra):
             # Merging the datasets
             ds_intra = xr.merge([ds_intra, _ds_intra])
 
-    return ds_intra
+    return ds_intra,ancillary_product_found
 
 
 def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
@@ -239,7 +249,7 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     lastpiece = l1c_full_path.split('_')[-1]
     l1b_product_version = lastpiece.replace('.nc','')
     l1c_full_path = l1c_full_path.replace(lastpiece, version + '.nc')
-    logging.info('File out: %s ', l1c_full_path)
+    logging.debug('File out: %s ', l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
     return l1c_full_path,l1b_product_version
@@ -305,7 +315,7 @@ def main():
                         help='overwrite the existing outputs [default=False]', required=False)
     parser.add_argument('--l1bsafe', required=True, help='L1B IW XSP SAFE (Sentinel-1 IFREMER) path')
     parser.add_argument('--outputdir', required=False, help='directory where to store output netCDF files',
-                        default=conf['iw_outputdir'])
+                        default=conf['wv_outputdir'])
     parser.add_argument('--version',
                         help='set the output product version (e.g. 0.3) default version will be read from config.yaml',
                         required=False, default=conf['l1c_iw_version'])

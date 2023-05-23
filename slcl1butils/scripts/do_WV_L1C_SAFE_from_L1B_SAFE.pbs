@@ -8,7 +8,7 @@ echo start
 # inputs
 #$1 str l1bsafe
 #$2 str version of the run: 1.5 for instance
-
+#$3 outputdir
 myvariable=$(whoami)
 . /appli/anaconda/latest/etc/profile.d/conda.sh
 #conda activate /home/datawork-cersat-public/cache/project/mpc-sentinel1/workspace/mamba/envs/xsar_oct22
@@ -18,4 +18,4 @@ which python
 
 exe=do_WV_L1C_SAFE_from_L1B_SAFE
 
-$exe --overwrite  --l1bsafe $1 --version $2
+$exe --overwrite  --l1bsafe $1 --version $2 --outputdir $3
