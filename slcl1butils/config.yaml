@@ -3,3 +3,4 @@ ww3_pattern: './%Y/FIELD_NC/LOPS_WW3-GLOB-30M_%Y%m.nc'
 l1c_iw_version: '0.1'
 iw_outputdir: none
 data_dir: '../assests/'
+wv_outputdir: none
