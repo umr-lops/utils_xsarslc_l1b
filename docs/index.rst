@@ -28,8 +28,18 @@ Documentation
 Overview
 ........
 
-    **slcl1butils**  helps to read L1B products (especially IW TOPS Scan SAR acquistions) containing both intra burst and
+    **slcl1butils**  helps to read L1B products (especially IW TOPS Scan SAR acquisitions) containing both intra burst and
     inter (i.e. overlapping bursts) burst cross spectrum.
+
+
+
+Algorithm Technical Baseline Document
+.....................................
+
+.. note::
+    The Algorithm Technical Baseline Document (ATBD) describes implemented processing steps from Sentinel-1 SLC product to Level-1C IFREMER products
+
+* :doc:`atbd`
 
 
 Examples
@@ -69,6 +79,13 @@ Last documentation build: |today|
    :caption: Getting Started
 
    installing
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Algorithm description
+
+   atbd
 
 .. toctree::
    :maxdepth: 1
