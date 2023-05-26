@@ -172,7 +172,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     closest_date, filename = resource_strftime(ancillary['resource'], step=ancillary['step'], date=sar_date)
     if (len(glob(filename)) != 1):
         logging.info('no ancillary files matching %s', filename)
-        return 0
+        return ds_intra,ds_inter
     # Getting the raster from anxillary data
     if (ancillary['name'] == 'ecmwf_0100_1h'):
         raster_ds = ecmwf_0100_1h(filename)
