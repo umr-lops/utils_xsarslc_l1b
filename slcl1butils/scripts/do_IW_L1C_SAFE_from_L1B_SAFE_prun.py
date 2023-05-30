@@ -29,6 +29,8 @@ if __name__ == '__main__':
     prunexe = '/appli/prun/bin/prun'
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k.txt' # 5781 SAFE, 632Go en L1B
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v2.txt' 
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v3.txt' # the most complete for SAFE 1.4k L1B
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_test.txt'
     logging.info('outputdir : %s',args.outputdir)
     # modify initial listing with more args
     listing2 = listing + '.modified'
