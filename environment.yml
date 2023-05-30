@@ -1,0 +1,16 @@
+name: slcl1butils
+channels:
+  - conda-forge
+dependencies:
+  - xmltodict
+  - geoviews
+  - fsspec
+  - numpy
+  - xarray-datatree
+  - xarray
+  - rasterio
+  - rioxarray
+  - dask
+  - affine
+  - yaml
+  - python >=3.9
