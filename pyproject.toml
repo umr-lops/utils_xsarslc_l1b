@@ -21,7 +21,8 @@ dependencies = [
     "importlib_resources",
     'tqdm',
     "zarr",
-    'fsspec'
+    'fsspec',
+    'yaml'
 ]
 dynamic = ["version"]
 
