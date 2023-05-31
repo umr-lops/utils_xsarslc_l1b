@@ -2,6 +2,7 @@
 import warnings
 import os
 import slcl1butils
+import numpy as np
 import logging
 import zipfile
 import fsspec
