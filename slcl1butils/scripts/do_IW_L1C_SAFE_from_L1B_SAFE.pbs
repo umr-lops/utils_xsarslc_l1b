@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 #PBS -l walltime=20:40:00
-#PBS -l mem=3400m
+#PBS -l mem=14g
 #PBS -N L1B-Ciw
 #PBS -m n
 
+
+# memory needed if about 4Go for 17.7km tiles and 14Go for 2km tiles
 echo start
 # inputs
 
