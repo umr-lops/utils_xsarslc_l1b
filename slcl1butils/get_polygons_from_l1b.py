@@ -4,7 +4,7 @@ from shapely import geometry
 from shapely import wkt
 import xarray as xr
 import logging
-from xsarslc.tools import xndindex
+from slcl1butils.utils import xndindex
 
 polygons_varnames = ['swath', 'tiles', 'bursts']
 def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0,burst_type='intra', **kwargs):

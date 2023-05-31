@@ -101,3 +101,18 @@ def get_memory_usage():
         memory_used_go = psutil.virtual_memory().used / 1000 / 1000 / 1000.
     str_mem = 'RAM usage: %1.1f Go' % memory_used_go
     return str_mem
+
+
+def xndindex(sizes):
+    """
+    xarray equivalent of np.ndindex iterator with defined dimension names
+
+    Args:
+        sizes (dict): dict of form {dimension_name (str): size(int)}
+    Return:
+        iterator over dict
+    """
+    from itertools import repeat
+
+    for d, k in zip(repeat(tuple(sizes.keys())), zip(np.ndindex(tuple(sizes.values())))):
+        yield {k: l for k, l in zip(d, k[0])}
