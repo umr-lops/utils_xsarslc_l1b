@@ -1,27 +1,9 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.13.7
-#   kernelspec:
-#     display_name: xsarslc
-#     language: python
-#     name: xsarslc
-# ---
-
-# +
 
 import xarray as xr
 import datetime
 import numpy as np
-import glob
-#from utils import bind, url_get
 from slcl1butils.utils import url_get
-import pandas as pd
+
 
 
 
