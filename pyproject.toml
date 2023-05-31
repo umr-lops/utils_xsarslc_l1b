@@ -1,6 +1,6 @@
 [project]
 name = "slcl1butils"
-requires-python = ">= 3.9"
+requires-python = ">=3.7,<3.11"
 description = "Python library to exploit SAR IFREMER L1B products"
 readme.file = "README.md"
 readme.content-type = "text/markdown"
