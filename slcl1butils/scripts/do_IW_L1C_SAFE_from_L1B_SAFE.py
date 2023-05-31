@@ -17,6 +17,7 @@ from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
 from slcl1butils.compute.cwave import compute_cwave_parameters
 from slcl1butils.compute.macs import compute_macs
 from slcl1butils.get_config import get_conf
+from slcl1butils.utils import get_memory_usage
 from collections import defaultdict
 from tqdm import tqdm
 import warnings
@@ -308,7 +309,7 @@ def main():
     logging.info('outputdir will be: %s', args.outputdir)
     do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe,version=args.version,outputdir=args.outputdir, cwave=True, macs=True, colocat=True,
                                   time_separation='2tau', overwrite=args.overwrite,dev=args.dev)
-    logging.info('peak memory usage: %s Mbytes', get_memory_usage())
+    logging.info('peak memory usage: %s ', get_memory_usage())
     logging.info('done in %1.3f min', (time.time() - t0) / 60.)
 
 
