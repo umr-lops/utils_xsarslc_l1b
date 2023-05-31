@@ -17,6 +17,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='start prun')
     parser.add_argument('--verbose', action='store_true', default=False)
     parser.add_argument('--outputdir', action='store', default=None,required=False)
+    parser.add_argument('--overwrite', action='store_true', default=False,
+                        help='overwrite the existing outputs [default=False]', required=False)
     parser.add_argument('--version', type=str,
                         help='version of the run e.g. 1.5', required=True)
     args = parser.parse_args()
@@ -30,6 +32,8 @@ if __name__ == '__main__':
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k.txt' # 5781 SAFE, 632Go en L1B
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v2.txt' 
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v3.txt' # the most complete for SAFE 1.4k L1B
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/L1B_L1C_listing_safe_missing_IW_1.4k_operational.txt'
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/L1B_L1C_listing_safe_missing_IW_1.4j.txt'
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_test.txt'
     logging.info('outputdir : %s',args.outputdir)
     # modify initial listing with more args
@@ -38,7 +42,10 @@ if __name__ == '__main__':
     content = open(listing).readlines()
     taille = len(content)
     for ll in content:
-        ll2 = ll.replace('\n', '') + ' ' + args.version +' '+ args.outputdir + '\n'
+        if args.overwrite:
+            ll2 = ll.replace('\n', '') + ' ' + args.version + ' ' + args.outputdir + ' --overwrite\n'
+        else:
+            ll2 = ll.replace('\n', '') + ' ' + args.version + ' ' + args.outputdir + '\n'
         fid.write(ll2)
     fid.close()
     didi = os.path.dirname(os.path.realpath(__file__))

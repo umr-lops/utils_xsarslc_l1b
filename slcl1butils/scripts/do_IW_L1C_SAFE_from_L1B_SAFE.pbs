@@ -10,6 +10,7 @@ echo start
 #$1 str l1bsafe
 #$2 str version of the run: 1.5 for instance
 #$3 str outputdir
+#$4 str overwrite [optional]
 myvariable=$(whoami)
 . /appli/anaconda/latest/etc/profile.d/conda.sh
 #conda activate /home/datawork-cersat-public/cache/project/mpc-sentinel1/workspace/mamba/envs/xsar_oct22
@@ -18,4 +19,16 @@ echo 'which python?'
 which python
 
 exe=do_IW_L1C_SAFE_from_L1B_SAFE
-$exe --overwrite  --l1bsafe $1 --version $2 --outputdir $3
+
+
+
+
+echo 'number of arguments' $#
+echo 'fourth arg' $4
+if [ "$4" == "--overwrite" ]; then
+  echo 'overwrite is ON'
+  $exe  --l1bsafe $1 --version $2 --outputdir $3 --overwrite
+else
+  echo 'overwrite is OFF'
+  $exe  --l1bsafe $1 --version $2 --outputdir $3
+fi
