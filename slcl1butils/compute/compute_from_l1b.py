@@ -52,8 +52,13 @@ def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau'):
                 xsIm = xsIm.mean(dim=['1tau'])
 
     elif burst_type == 'inter':
-        xsRe = ds['xspectra_Re']  # +1j*ds_inter['xspectra_Im']
-        xsIm = ds['xspectra_Im']
+        if 'xspectra_Re' in ds:
+            xsRe = ds['xspectra_Re']  # +1j*ds_inter['xspectra_Im']
+            xsIm = ds['xspectra_Im']
+        else:
+            logging.warning('xspectra_Re absent from interburst group')
+            xsRe = None
+            xsIm = None
     else:  # WV case
         raise Exception('not handle case')
     if xsRe is None:
