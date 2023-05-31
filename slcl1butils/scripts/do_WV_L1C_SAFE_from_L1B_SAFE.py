@@ -20,6 +20,7 @@ from slcl1butils.compute.cwave import compute_cwave_parameters
 from slcl1butils.compute.macs import compute_macs
 from slcl1butils.get_config import get_conf
 from tqdm import tqdm
+from slcl1butils.utils import get_memory_usage
 import warnings
 
 warnings.simplefilter(action='ignore')
@@ -82,20 +83,22 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
     cpt_already = 0
     cpt_ancillary_products_found = 0
     for ii in pbar:
-        pbar.set_description('sucess: %s/%s ancillary : %s, already: %s'%(cpt_success,len(files),cpt_ancillary_products_found,cpt_already))
+        pbar.set_description('sucess: %s/%s ancillary : %s, already: %s' % (
+        cpt_success, len(files), cpt_ancillary_products_found, cpt_already))
         l1b_fullpath = files[ii]
-        l1c_full_path,l1b_product_version = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
+        l1c_full_path, l1b_product_version = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
         if os.path.exists(l1c_full_path) and overwrite is False:
             logging.debug('%s already exists', l1c_full_path)
             cpt_already += 1
         else:
-            ds_intra,ancillary_product_found = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
-                                              colocat=colocat,
-                                              time_separation=time_separation)
+            ds_intra, ancillary_product_found = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list,
+                                                                       cwave=cwave, macs=macs,
+                                                                       colocat=colocat,
+                                                                       time_separation=time_separation)
             if ancillary_product_found:
                 cpt_ancillary_products_found += 1
-            save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version,version_L1B=l1b_product_version)
-            logging.debug('successfully wrote  %s',l1c_full_path)
+            save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
+            logging.debug('successfully wrote  %s', l1c_full_path)
             cpt_success += 1
     return 0
 
@@ -164,9 +167,9 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     # ====================
     if colocat:
         for ancillary in ancillary_list:
-            ds_intra,ancillary_product_found = append_ancillary_field(ancillary, ds_intra)
+            ds_intra, ancillary_product_found = append_ancillary_field(ancillary, ds_intra)
 
-    return ds_intra,ancillary_product_found
+    return ds_intra, ancillary_product_found
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -187,7 +190,7 @@ def append_ancillary_field(ancillary, ds_intra):
 
     # ===========================================
     ## Check if the ancillary data can be found
-    logging.debug('attrs : %s0',ds_intra.attrs['start_date'])
+    logging.debug('attrs : %s0', ds_intra.attrs['start_date'])
     sar_date = datetime.strptime(str.split(ds_intra.attrs['start_date'], '.')[0], '%Y-%m-%d %H:%M:%S')
     closest_date, filename = resource_strftime(ancillary['resource'], step=ancillary['step'], date=sar_date)
     if len(glob(filename)) != 1:
@@ -221,7 +224,7 @@ def append_ancillary_field(ancillary, ds_intra):
             # Merging the datasets
             ds_intra = xr.merge([ds_intra, _ds_intra])
 
-    return ds_intra,ancillary_product_found
+    return ds_intra, ancillary_product_found
 
 
 def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
@@ -247,15 +250,15 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     # Output filename
     l1c_full_path = os.path.join(pathout, os.path.basename(l1b_fullpath).replace('L1B', 'L1C'))
     lastpiece = l1c_full_path.split('_')[-1]
-    l1b_product_version = lastpiece.replace('.nc','')
+    l1b_product_version = lastpiece.replace('.nc', '')
     l1c_full_path = l1c_full_path.replace(lastpiece, version + '.nc')
     logging.debug('File out: %s ', l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
-    return l1c_full_path,l1b_product_version
+    return l1c_full_path, l1b_product_version
 
 
-def save_l1c_to_netcdf(l1c_full_path, ds_intra, version,version_L1B):
+def save_l1c_to_netcdf(l1c_full_path, ds_intra, version, version_L1B):
     """
 
     Args:
@@ -282,23 +285,6 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, version,version_L1B):
     #
     # Saving the results in netCDF
     dt.to_netcdf(l1c_full_path)
-
-
-def get_memory_usage():
-    """
-
-    Returns
-    -------
-
-    """
-    try:
-        import resource
-        memory_used_go = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000. / 1000.
-    except:  # on windows resource is not usable
-        import psutil
-        memory_used_go = psutil.virtual_memory().used / 1000 / 1000 / 1000.
-    str_mem = 'RAM usage: %1.1f Go' % memory_used_go
-    return str_mem
 
 
 def main():

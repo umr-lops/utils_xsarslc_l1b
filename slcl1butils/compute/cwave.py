@@ -3,6 +3,19 @@ import xarray as xr
 
 
 def compute_cwave_parameters(xs, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 * np.pi / 600, Nk=4, Nphi=5):
+    """
+
+    Args:
+        xs: xarray.Dataset
+        save_kernel: bool
+        kmax: float
+        kmin: float
+        Nk: int
+        Nphi: int
+
+    Returns:
+        cwave_parameters: xarray.Dataset
+    """
     krg = xs.k_rg
     kaz = xs.k_az
 
@@ -27,6 +40,20 @@ def compute_cwave_parameters(xs, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 
 
 
 def compute_kernel(krg, kaz, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 * np.pi / 600, Nk=4, Nphi=5):
+    """
+
+    Args:
+        krg: xarray.DataArray
+        kaz: xarray.DataArray
+        save_kernel: bool
+        kmax: float
+        kmin: float
+        Nk: int
+        Nphi: int
+
+    Returns:
+        Kernel : xarray.Dataset
+    """
     # Kernel Computation
     #
     gamma = 2
@@ -72,6 +99,16 @@ def compute_kernel(krg, kaz, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 * np
 
 
 def gegenbauer_polynoms(x, nk, lbda=3 / 2.):
+    """
+
+    Args:
+        x: np.ndarray
+        nk: int
+        lbda: float
+
+    Returns:
+        Cnk : np.ndarray
+    """
     C0 = 1
     if (nk == 0):
         return C0 + x * 0
@@ -80,29 +117,54 @@ def gegenbauer_polynoms(x, nk, lbda=3 / 2.):
         return C1 + x * 0
 
     Cnk = (1 / nk) * (2 * x * (nk + lbda - 1) * gegenbauer_polynoms(x, nk - 1, lbda=lbda) - (
-                nk + 2 * lbda - 2) * gegenbauer_polynoms(x, nk - 2, lbda=lbda))
+            nk + 2 * lbda - 2) * gegenbauer_polynoms(x, nk - 2, lbda=lbda))
     Cnk = (1 / nk) * (2 * x * (nk + lbda - 1) * gegenbauer_polynoms(x, nk - 1, lbda=lbda) - (
-                nk + 2 * lbda - 2) * gegenbauer_polynoms(x, nk - 2, lbda=lbda))
+            nk + 2 * lbda - 2) * gegenbauer_polynoms(x, nk - 2, lbda=lbda))
 
     return Cnk
 
 
 def coef(nk):
+    """
+
+    Args:
+        nk: int
+
+    Returns:
+        coef_frac : np.ndarray
+    """
     coef_frac = (nk + 3 / 2.) / ((nk + 2.) * (nk + 1.))
     return coef_frac
 
 
 def nu(x):
+    """
+
+    Args:
+        x: np.ndarray
+
+    Returns:
+
+    """
     return np.sqrt(1 - x ** 2.)
 
 
 def harmonic_functions(x, nphi):
-    if (nphi == 1):
+    """
+
+    Args:
+        x: np.ndarray
+        nphi: int
+
+    Returns:
+        Fn : np.ndarray
+    """
+    if nphi == 1:
         Fn = np.sqrt(1 / np.pi) + x * 0
         return Fn
 
     # Even & Odd case
-    if (nphi % 2 == 0):
+    if nphi % 2 == 0:
         Fn = np.sqrt(2 / np.pi) * np.sin((nphi) * x)
     else:
         Fn = np.sqrt(2 / np.pi) * np.cos((nphi - 1) * x)

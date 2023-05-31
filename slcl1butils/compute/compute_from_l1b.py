@@ -121,7 +121,7 @@ def compute_xs_from_l1b_wv(_file, time_separation='2tau'):
     # xs=xs.squeeze()
     # convert the wavenumbers variables in range and azimuth into coordinates after selection of one unique vector without any other dimsension dependency
     # xs = xs.assign_coords({'k_rg': xs.k_rg})
-    #  Replace the dimesion name for frequencies
+    # Replace the dimnesion name for frequencies
     xs = xs.swap_dims({'freq_sample': 'k_rg', 'freq_line': 'k_az'})
     # Bug Fix to define the wavenumber in range direction.
     xs.k_rg.attrs.update({'long_name': 'wavenumber in range direction', 'units': 'rad/m'})

@@ -7,7 +7,9 @@ import logging
 from slcl1butils.utils import xndindex
 
 polygons_varnames = ['swath', 'tiles', 'bursts']
-def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0,burst_type='intra', **kwargs):
+
+
+def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0, burst_type='intra', **kwargs):
     """
     get polygons for a given group of L1B SAR IFREMER product
     Args:
@@ -40,10 +42,11 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0,burst_
     polygons['swath'] = [poly_swath]
     if swath_only:
         return polygons, coordinates, variables
-    logging.debug('l1b_ds : %s',l1b_ds)
+    logging.debug('l1b_ds : %s', l1b_ds)
     # Tiles polynom & variables
 
-    gege = xndindex(l1b_ds['sigma0'].sizes) # whatever tthere is or not tile_line and tile_sample and burst, it loops on it
+    gege = xndindex(
+        l1b_ds['sigma0'].sizes)  # whatever tthere is or not tile_line and tile_sample and burst, it loops on it
     for uu in gege:
         iburst = uu['burst']
         if 'tile_line' in uu:
@@ -54,7 +57,7 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0,burst_
             itile_sample = uu['tile_sample']
         else:
             itile_sample = np.nan
-    #for iburst in l1b_ds['burst'].values:
+        # for iburst in l1b_ds['burst'].values:
         if burst_type == 'intra':
             if 'burst_corner_longitude' in l1b_ds:
                 burst_lon_corners = l1b_ds['burst_corner_longitude'].sel(burst=iburst).values.flatten().tolist()
@@ -62,10 +65,11 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0,burst_
                 if np.sum((~np.isfinite(burst_lon_corners))) == 0:
                     # Define the burst polygons
                     order = [0, 1, 3, 2, 0]
-                    poly_burst = geometry.Polygon(np.stack([np.array(burst_lon_corners)[order], np.array(burst_lat_corners)[order]]).T)
-                    #pts_burst = [geometry.Point(burst_lon_corners[cpt],burst_lat_corners[cpt]) for cpt,_ in enumerate(burst_lon_corners)]
-                    #pts_burst = [pts_burst[0], pts_burst[1], pts_burst[3], pts_burst[2]]
-                    #poly_burst = geometry.Polygon(pts_burst)
+                    poly_burst = geometry.Polygon(
+                        np.stack([np.array(burst_lon_corners)[order], np.array(burst_lat_corners)[order]]).T)
+                    # pts_burst = [geometry.Point(burst_lon_corners[cpt],burst_lat_corners[cpt]) for cpt,_ in enumerate(burst_lon_corners)]
+                    # pts_burst = [pts_burst[0], pts_burst[1], pts_burst[3], pts_burst[2]]
+                    # poly_burst = geometry.Polygon(pts_burst)
                     poly_bursts.append(poly_burst)
         # for itile_sample in l1b_ds['tile_sample'].values:
         #     for itile_line in l1b_ds['tile_line'].values:
@@ -82,12 +86,12 @@ def get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False, ik=0,burst_
         if np.sum((~np.isfinite(lon_corners))) == 0:
             # Define the tile polygons
             pts = [geometry.Point(lon_corners[cpt], lat_corners[cpt]) for cpt, _ in enumerate(lon_corners)]
-            pts = [pts[0], pts[1], pts[3], pts[2],pts[0]]
-            logging.debug('pts: %s',pts)
-            logging.debug('one pt : %s %s',pts[0],type(pts[0]))
-            order = [0,1,3,2,0]
-            poly_tile = geometry.Polygon(np.stack([np.array(lon_corners)[order],np.array(lat_corners)[order]]).T)
-            #poly_tile = geometry.Polygon(pts)
+            pts = [pts[0], pts[1], pts[3], pts[2], pts[0]]
+            logging.debug('pts: %s', pts)
+            logging.debug('one pt : %s %s', pts[0], type(pts[0]))
+            order = [0, 1, 3, 2, 0]
+            poly_tile = geometry.Polygon(np.stack([np.array(lon_corners)[order], np.array(lat_corners)[order]]).T)
+            # poly_tile = geometry.Polygon(pts)
             poly_tiles.append(poly_tile)
             # Coordinates
             ibursts.append(iburst)
@@ -159,7 +163,7 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, ik=0, **kwargs):
                                                                                              variable_names=variable_names,
                                                                                              ik=ik)
         else:
-            _polygons, _coordinates, _variables  = get_swath_tiles_polygons_from_l1bgroup(l1b_ds)
+            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds)
 
         # polygons
         for polygons_varname in polygons_varnames:
@@ -173,8 +177,8 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, ik=0, **kwargs):
         if variable_names:
             if variable_names[0] is not None:
                 for variable_name in variable_names:
-                    variables[burst_type][variable_name] = variables[burst_type][variable_name] + _variables[variable_name]
-
+                    variables[burst_type][variable_name] = variables[burst_type][variable_name] + _variables[
+                        variable_name]
 
     return polygons, coordinates, variables
 
@@ -242,6 +246,5 @@ def get_swath_tiles_polygons_from_l1bfiles(l1b_files, ik=0, **kwargs):
                     for variable_name in variable_names:
                         variables[burst_type][variable_name] = variables[burst_type][variable_name] + \
                                                                _variables[burst_type][variable_name]
-
 
     return polygons, coordinates, variables

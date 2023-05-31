@@ -54,8 +54,8 @@ def make_wallpaper(l1b_path):
     Returns:
 
     """
-    from xsarslc.processing.xspectra import symmetrize_xspectrum
-    from xsarslc.tools import xndindex
+    from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
+    from slcl1butils.utils import xndindex
     from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
     l1b = datatree.open_datatree(l1b_path)
