@@ -16,3 +16,9 @@ pip install slcl1butils
 import slcl1butils
 ...
 ```
+
+## Contributors
+
+Thanks to our few contributors! :-)
+
+[![Contributors](https://contrib.rocks/image?repo=umr-lops/utils_xsarslc_l1b)](https://github.com/umr-lops/utils_xsarslc_l1b/graphs/contributors)
