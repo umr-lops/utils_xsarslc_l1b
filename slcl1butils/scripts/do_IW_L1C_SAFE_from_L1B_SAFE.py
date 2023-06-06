@@ -1,4 +1,6 @@
 import argparse
+import pdb
+
 import slcl1butils
 from slcl1butils.raster_readers import ecmwf_0100_1h
 from slcl1butils.raster_readers import ww3_global_yearly_3h
@@ -88,7 +90,7 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
             ds_intra, ds_inter = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
                                                         colocat=colocat,
                                                         time_separation=time_separation)
-
+            #pdb.set_trace()
             if 'xspectra_Re' in ds_inter:
                 save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter,version=version)
                 cpt['saved_in_nc'] += 1
@@ -117,7 +119,6 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     burst_type = 'inter'
     time_separation = 'None'
     xs_inter, ds_inter = compute_xs_from_l1b(l1b_fullpath, burst_type=burst_type, time_separation=time_separation)
-
     # ====================
     # CWAVE
     # ====================
@@ -157,8 +158,8 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     # ====================
     if colocat:
         for ancillary in ancillary_list:
+            logging.debug('ancillary: %s',ancillary)
             ds_intra, ds_inter = append_ancillary_field(ancillary, ds_intra, ds_inter)
-
     return ds_intra, ds_inter
 
 

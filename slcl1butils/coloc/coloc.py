@@ -119,17 +119,16 @@ def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=Tr
             #        )
             #    )
             upscaled_da.name = var
+            upscaled_da = upscaled_da.astype(float) #added by agrouaze to fix TypeError: No matching signature found at interpolation
             # interp upscaled_da on sar grid
-            # mapped_ds_list.append(
-            #     upscaled_da.interp(
-            #         x=l1b_ds.longitude,
-            #         y=l1b_ds.latitude
-            #     ).drop_vars(['x', 'y'])
-            # )
+            #pdb.set_trace()
+            # it turns out that this line is super important ot get the coordinates of the L1B SAr dataset instead of x,y
+            projected_field = upscaled_da.interp(x=l1b_ds.longitude,y=l1b_ds.latitude).drop_vars(['x', 'y'])
+            mapped_ds_list.append(projected_field)
             # fix double interpolation 11 april 2023
-            mapped_ds_list.append(
-                upscaled_da.drop_vars(['x', 'y'])
-            )
+            # mapped_ds_list.append(
+            #     upscaled_da.drop_vars(['x', 'y'])
+            # )
         raster_mapped = xr.merge(mapped_ds_list)
         merged_raster_mapped = xr.merge([l1b_ds, raster_mapped])
 
