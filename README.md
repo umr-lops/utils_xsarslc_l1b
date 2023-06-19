@@ -1,4 +1,4 @@
-[![Documentation Status](https://readthedocs.org/projects/slcl1butils/badge/?version=latest)](https://slcl1butils.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/slcl1butils/badge/?version=latest)](https://slcl1butils.readthedocs.io/en/latest/?badge=latest) [![Conda Version](https://img.shields.io/conda/vn/conda-forge/slcl1butils.svg)](https://anaconda.org/conda-forge/slcl1butils)
 
 # utils_xsarslc_l1b
 python tool to read/display/enrich Sentinel-1 SAR Level-1 B SLC products produced at IFREMER
