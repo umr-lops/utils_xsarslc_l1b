@@ -88,7 +88,7 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
         l1b_fullpath = files[ii]
         l1c_full_path, l1b_product_version = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
         if os.path.exists(l1c_full_path) and overwrite is False:
-            logging.debug('%s already exists', l1c_full_path)
+            logging.info('%s already exists', l1c_full_path)
             cpt_already += 1
         else:
             ds_intra, ancillary_product_found = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list,
@@ -98,7 +98,7 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
             if ancillary_product_found:
                 cpt_ancillary_products_found += 1
             save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
-            logging.debug('successfully wrote  %s', l1c_full_path)
+            logging.info('successfully wrote  %s', l1c_full_path)
             cpt_success += 1
     return 0
 
@@ -285,6 +285,7 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, version, version_L1B):
     #
     # Saving the results in netCDF
     dt.to_netcdf(l1c_full_path)
+    logging.info('output file written successfully: %s',l1c_full_path)
 
 
 def main():
