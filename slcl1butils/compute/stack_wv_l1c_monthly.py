@@ -99,7 +99,7 @@ def preprrocess(filee,indkrg,indkaz_bo,indkaz_up,k_rg_ref,k_az_ref,typee,nc_numb
     dsu = dsu.isel(freq_sample=slice(0, indkrg), freq_line=slice(indkaz_bo, indkaz_up))
     dsu = dsu.assign_coords({'k_rg': k_rg_ref.values, 'k_az': k_az_ref.values})
     dsu = dsu.assign_coords({'nc_number':nc_number})
-    dsu = dsu.assign_coords({'sardate': tmpdate})
+    dsu = dsu.assign_coords({'sardate': np.datetime64(tmpdate,'s').astype('datetime64[ns]')})
     if 'xspectra_0tau_Re' in dsu:
         for tautau in range(3):
             dsu['xspectra_%stau' % tautau] = dsu['xspectra_%stau_Re' % tautau] + 1j * dsu['xspectra_%stau_Im' % tautau]

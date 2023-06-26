@@ -5,10 +5,13 @@ import numpy as np
 def compute_macs(xs, lambda_range_max=[50.]):
     """
     Parameters:
-        xs: xarray.Dataset
-        lambda_range_max: list of float
-    :return:
-        macs : xarray.Dataset containing imaginary and real part of MACS
+        xs xarray.Dataset
+           cartesian cross spectra described on a grid 'k_az' and 'k_rg'
+        lambda_range_max list
+             list of floats to set maximum value for the area where MACS integral is computed
+    Return:
+        macs xarray.Dataset
+           dataset containing imaginary and real part of MACS
     """
     # IMACS fix limits from Li et al., JGR 2019
     k_az_max = 2 * np.pi / 600.

@@ -4,6 +4,9 @@
 Computation of CWAVE parameters
 ================================
 
+This section refers to :
+
+.. py:function:: slcl1butils.compute.cwave.compute_cwave_parameters()
 
 CWAVE parmeters are based on the SAR image x-spectrum.
 

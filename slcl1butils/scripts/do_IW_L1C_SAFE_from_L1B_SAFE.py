@@ -98,7 +98,7 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
                 logging.info('there is no xspectra in this subswath -> the L1C will not be saved')
                 cpt['L1B_without_spectra'] += 1
     logging.info('cpt: %s',cpt)
-    return 0
+    return l1c_full_path
 
 
 def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=True, colocat=True,
@@ -308,8 +308,9 @@ def main():
     t0 = time.time()
     logging.info('product version to produce: %s', args.version)
     logging.info('outputdir will be: %s', args.outputdir)
-    do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe,version=args.version,outputdir=args.outputdir, cwave=True, macs=True, colocat=True,
+    final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe,version=args.version,outputdir=args.outputdir, cwave=True, macs=True, colocat=True,
                                   time_separation='2tau', overwrite=args.overwrite,dev=args.dev)
+    logging.info('%s successfully written',final_L1C_path)
     logging.info('peak memory usage: %s ', get_memory_usage())
     logging.info('done in %1.3f min', (time.time() - t0) / 60.)
 
