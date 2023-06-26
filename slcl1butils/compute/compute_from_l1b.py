@@ -8,9 +8,12 @@ def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau'):
     """
 
     Args:
-        _file: str full path L1B nc file
-        burst_type: str intra or inter
-        time_separation: str 2tau or 1tau...
+        _file
+              (str) full path L1B nc file
+        burst_type
+              (str) intra or inter
+        time_separation
+              (str) 2tau or 1tau...
 
     Returns:
 
