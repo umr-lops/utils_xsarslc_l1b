@@ -28,6 +28,15 @@ reference_oswK_1145m_60pts = np.array([0.005235988, 0.00557381, 0.005933429, 0.0
 
 def core_plot_part(crossSpectraRePol,heading,fig=None,ax=None,thecmap=None,limit_display_wv=100,title='x spec',
                    tauval=2,azimuth_cutoffSAR=None,vmin=None,vmax=None,add_colorbar=True):
+    """
+    Parameters
+    ----------
+        crossSpectraRePol xarray.core.Dataset
+    Returns
+    -------
+
+
+    """
     # partie display plot
     if fig is None :
         plt.figure(figsize=(20,8),dpi=100)
