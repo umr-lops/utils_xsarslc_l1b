@@ -22,7 +22,10 @@ dependencies = [
     "importlib_resources",
     'tqdm',
     "zarr",
-    'fsspec'
+    'fsspec',
+    'matplotlib',
+    'scipy',
+    'aiohttp'
 ]
 dynamic = ["version"]
 

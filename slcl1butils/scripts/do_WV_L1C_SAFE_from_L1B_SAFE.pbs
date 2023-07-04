@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -l walltime=20:40:00
-#PBS -l mem=800m
+#PBS -l mem=700m
 #PBS -N L1B-L1C
 #PBS -m n
 
