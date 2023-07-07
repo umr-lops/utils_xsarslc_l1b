@@ -99,8 +99,9 @@ def make_wallpaper(l1b_path):
         yp = 0.14*np.sin(heading)
         plt.plot([-xp,xp], [yp,-yp], color='r') # range line
         plt.plot([yp,-yp], [xp,-xp], color='r') # azimuth line
-        plt.plot(np.array([-xp,xp])+2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])+2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff upper line
-        plt.plot(np.array([-xp,xp])-2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])-2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff lower line
+        if cutoff!=0:
+            plt.plot(np.array([-xp,xp])+2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])+2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff upper line
+            plt.plot(np.array([-xp,xp])-2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])-2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff lower line
         plt.axis('scaled')
         plt.xlim([-0.14,0.14])
         plt.ylim([-0.14,0.14])
@@ -136,8 +137,9 @@ def make_wallpaper(l1b_path):
 
         plt.plot([-xp,xp], [yp,-yp], color='r') # range line
         plt.plot([yp,-yp], [xp,-xp], color='r') # azimuth line
-        plt.plot(np.array([-xp,xp])+2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])+2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff upper line
-        plt.plot(np.array([-xp,xp])-2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])-2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff lower line
+        if cutoff!=0:
+            plt.plot(np.array([-xp,xp])+2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])+2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff upper line
+            plt.plot(np.array([-xp,xp])-2*np.pi/cutoff*np.sin(heading), np.array([yp,-yp])-2*np.pi/cutoff*np.cos(heading), color='k', linestyle='--') # cutoff lower line
 
         plt.axis('scaled')
         plt.xlim([-0.14,0.14])
