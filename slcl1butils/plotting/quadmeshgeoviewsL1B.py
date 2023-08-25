@@ -3,7 +3,7 @@ import numpy as np
 import holoviews as hv
 import geoviews as gv
 gv.extension('bokeh')
-def doQuadMeshL1BorL1C_onefile(ff,bursttype='intraburst',variable='sigma0'):
+def doQuadMeshL1BorL1C_onefile(ff,bursttype='intraburst',variable='sigma0',clim=(0,0.2)):
     ds = xr.open_dataset(ff, group=bursttype)
     sub = ds[variable].stack({'y': ['burst', 'tile_line']})
 
@@ -12,13 +12,13 @@ def doQuadMeshL1BorL1C_onefile(ff,bursttype='intraburst',variable='sigma0'):
     sub = sub.assign_coords({'x': np.arange(sub.x.size)})
 
     qmeshes = gv.Dataset(sub, kdims=['longitude', 'latitude']).to(gv.QuadMesh)
-    fig = qmeshes.opts(width=900, height=600, colorbar=True, cmap='Greys_r')
+    fig = qmeshes.opts(width=900, height=600, colorbar=True, cmap='Greys_r',clim=clim)
     return fig
 
-def doQuadMeshL1BorL1C_manyfiles(files,bursttype='intraburst',variable='sigma0'):
+def doQuadMeshL1BorL1C_manyfiles(files,bursttype='intraburst',variable='sigma0',clim=(0,0.2)):
     all_quads = []
     for ff in files:
-        oneQuad = doQuadMeshL1BorL1C_onefile(ff, bursttype=bursttype, variable=variable)
+        oneQuad = doQuadMeshL1BorL1C_onefile(ff, bursttype=bursttype, variable=variable,clim=clim)
         all_quads.append(oneQuad)
     tiles = gv.tile_sources.EsriImagery
     fig = tiles * hv.Overlay(all_quads)
