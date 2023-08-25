@@ -118,12 +118,18 @@ def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=Tr
             #            kx=3, ky=3
             #        )
             #    )
+            if var=='hs':
+                pass
+                #pdb.set_trace()
             upscaled_da.name = var
             upscaled_da = upscaled_da.astype(float) #added by agrouaze to fix TypeError: No matching signature found at interpolation
             # interp upscaled_da on sar grid
             #pdb.set_trace()
             # it turns out that this line is super important ot get the coordinates of the L1B SAr dataset instead of x,y
-            projected_field = upscaled_da.interp(x=l1b_ds.longitude,y=l1b_ds.latitude).drop_vars(['x', 'y'])
+            if l1b_ds.swath=='WV':
+                projected_field = upscaled_da.drop_vars(['x', 'y'])
+            else: # it is checked that IW needs the following line for both ECMWD and WW3 , if applied on WV leads to NaN WW3 values, Aug 2023
+                projected_field = upscaled_da.interp(x=l1b_ds.longitude,y=l1b_ds.latitude).drop_vars(['x', 'y'])
             mapped_ds_list.append(projected_field)
             # fix double interpolation 11 april 2023
             # mapped_ds_list.append(

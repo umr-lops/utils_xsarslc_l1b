@@ -93,8 +93,12 @@ def preprrocess(filee,indkrg,indkaz_bo,indkaz_up,k_rg_ref,k_az_ref,typee,nc_numb
     dsu = dsu.drop_vars(['sample'])
     # dsu = dsu.assign_coords({'wvmode': tmpsubswath})
     dsu['wvmode'] = xr.DataArray(tmpsubswath)
-    tmpdate = datetime.datetime.strptime(dsu.attrs['start_date'],
-                                         '%Y-%m-%d %H:%M:%S.%f')
+    try:
+        tmpdate = datetime.datetime.strptime(dsu.attrs['start_date'],
+                                             '%Y-%m-%d %H:%M:%S.%f')
+    except:
+        tmpdate = datetime.datetime.strptime(dsu.attrs['start_date'],
+                                             '%Y-%m-%d %H:%M:%S')
     #dsu['sardate'] = xr.DataArray(tmpdate)
     dsu = dsu.isel(freq_sample=slice(0, indkrg), freq_line=slice(indkaz_bo, indkaz_up))
     dsu = dsu.assign_coords({'k_rg': k_rg_ref.values, 'k_az': k_az_ref.values})
