@@ -58,7 +58,7 @@ def raster_cropping_in_polygon_bounding_box(poly_tile, raster_ds, enlarge=True, 
     return raster_ds
 
 
-def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=True, method=1):
+def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=True):
     """
 
     Args:
@@ -70,73 +70,34 @@ def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=Tr
     Returns:
 
     """
-
-    if method == 0:
-        #
-        # Get the tile polygons and corresponding coordinates
-        polygons, coordinates = get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=False)
-        poly_tiles = polygons['tiles']
-        # For each tile find the ancillary data
-        anc_ds = []
-        for cpt, poly_tile in enumerate(poly_tiles):
-            #
-            # Extract the raster in a boundix box 
-            raster_bb_tile_ds = raster_cropping_in_polygon_bounding_box(poly_tile, raster_bb_ds, enlarge=True, step=1)
-            # Compute the mean wind component in the tile
-            U10 = np.nanmean(raster_bb_tile_ds['U10'].values)
-            V10 = np.nanmean(raster_bb_tile_ds['V10'].values)
-            #
-            _anc_ds = xr.Dataset(data_vars={'U10': U10, 'V10': V10}, coords={'burst': coordinates['ibursts'][cpt],
-                                                                             'tile_sample':
-                                                                                 coordinates['itile_samples'][cpt],
-                                                                             'tile_line': coordinates['itile_lines'][
-                                                                                 cpt]}).expand_dims(
-                ['burst', 'tile_sample', 'tile_line'])
-            anc_ds.append(_anc_ds)
-        raster_mapped = xr.combine_by_coords(anc_ds)
-        merged_raster_mapped = xr.merge([l1b_ds, raster_mapped])
-
-    if method == 1:
-        lons = l1b_ds.longitude.values.flatten()
-        lats = l1b_ds.latitude.values.flatten()
-
-        mapped_ds_list = []
-        for var in raster_bb_ds:
-            raster_da = raster_bb_ds[var]  # .chunk(raster_bb_ds[var].shape)
-            # upscale in original projection using interpolation
-            # in most cases, RectBiVariateSpline give better results, but can't handle Nans
-            # if np.any(np.isnan(raster_da)):
-            upscaled_da = raster_da.interp(x=lons, y=lats)
-
-            # else:
-            #    upscaled_da = map_blocks_coords(
-            #        xr.DataArray(dims=['y', 'x'], coords={'x': lons, 'y': lats}).chunk(1000),
-            #        RectBivariateSpline(
-            #            raster_da.y.values,
-            #            raster_da.x.values,
-            #            raster_da.values,
-            #            kx=3, ky=3
-            #        )
-            #    )
-            if var=='hs':
-                pass
-                #pdb.set_trace()
-            upscaled_da.name = var
-            upscaled_da = upscaled_da.astype(float) #added by agrouaze to fix TypeError: No matching signature found at interpolation
-            # interp upscaled_da on sar grid
-            #pdb.set_trace()
-            # it turns out that this line is super important ot get the coordinates of the L1B SAr dataset instead of x,y
-            if l1b_ds.swath=='WV':
-                projected_field = upscaled_da.drop_vars(['x', 'y'])
-            else: # it is checked that IW needs the following line for both ECMWD and WW3 , if applied on WV leads to NaN WW3 values, Aug 2023
-                projected_field = upscaled_da.interp(x=l1b_ds.longitude,y=l1b_ds.latitude).drop_vars(['x', 'y'])
-            mapped_ds_list.append(projected_field)
-            # fix double interpolation 11 april 2023
-            # mapped_ds_list.append(
-            #     upscaled_da.drop_vars(['x', 'y'])
-            # )
-        raster_mapped = xr.merge(mapped_ds_list)
-        merged_raster_mapped = xr.merge([l1b_ds, raster_mapped])
+    if l1b_ds.swath=='IW':
+        latsar_without_nan = l1b_ds.latitude.interpolate_na(
+            dim="tile_sample", method="linear", fill_value="extrapolate")
+        lonsar_without_nan = l1b_ds.longitude.interpolate_na(
+            dim="tile_sample", method="linear", fill_value="extrapolate")
+    else:
+        latsar_without_nan = l1b_ds.latitude
+        lonsar_without_nan = l1b_ds.longitude
+    mapped_ds_list = []
+    for var in raster_bb_ds:
+        raster_da = raster_bb_ds[var]
+        upscaled_da = raster_da.interp(
+            x=lonsar_without_nan.values.flatten(), y=latsar_without_nan.values.flatten()
+        )
+        upscaled_da.name = var
+        upscaled_da = upscaled_da.astype(float) #added by agrouaze to fix TypeError: No matching signature found at interpolation
+        # it turns out that this line is super important ot get the coordinates of the L1B SAr dataset instead of x,y
+        if l1b_ds.swath=='WV':
+            projected_field = upscaled_da.drop_vars(['x', 'y'])
+        else: # it is checked that IW needs the following line for both ECMWD and WW3 , if applied on WV leads to NaN WW3 values, Aug 2023
+            projected_field = upscaled_da.interp(x=lonsar_without_nan,y=latsar_without_nan,assume_sorted=False).drop_vars(['x', 'y'])
+        mapped_ds_list.append(projected_field)
+        # fix double interpolation 11 april 2023
+        # mapped_ds_list.append(
+        #     upscaled_da.drop_vars(['x', 'y'])
+        # )
+    raster_mapped = xr.merge(mapped_ds_list)
+    merged_raster_mapped = xr.merge([l1b_ds, raster_mapped])
 
     if apply_merging:
         return merged_raster_mapped

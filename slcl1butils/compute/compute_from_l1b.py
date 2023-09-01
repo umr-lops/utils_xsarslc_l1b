@@ -32,7 +32,7 @@ def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau'):
     # ds = dt[burst_type+'burst_xspectra'].to_dataset()
     # drop variables
 
-    logging.info('time_separation : %s', time_separation)
+    logging.debug('time_separation : %s', time_separation)
     if burst_type == 'intra':
         consolidated_list = []
         list_to_drop = ['var_xspectra_0tau', 'var_xspectra_1tau', 'var_xspectra_2tau']

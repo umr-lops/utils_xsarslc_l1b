@@ -22,6 +22,7 @@ from slcl1butils.get_config import get_conf
 from tqdm import tqdm
 from slcl1butils.utils import get_memory_usage
 import warnings
+from collections import defaultdict
 
 warnings.simplefilter(action='ignore')
 conf = get_conf()
@@ -70,7 +71,9 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
     # sth = macs * cwave
 
     files = glob(os.path.join(run_directory, safe_file, '*_L1B_*nc'))
-    logging.info('Number of files: %s', len(files))
+    cpt_total = len(files)
+    cpt = defaultdict(int)
+    logging.info('Number of files: %s', cpt_total)
     if len(files) == 0:
         return None
 
@@ -83,24 +86,34 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
     cpt_already = 0
     cpt_ancillary_products_found = 0
     for ii in pbar:
-        pbar.set_description('sucess: %s/%s ancillary : %s, already: %s' % (
-        cpt_success, len(files), cpt_ancillary_products_found, cpt_already))
+        if dev:
+            pbar.set_description('sucess: %s/%s ancillary : %s, already: %s' % (
+            cpt_success, len(files), cpt_ancillary_products_found, cpt_already))
+        else:
+            pbar.set_description()
         l1b_fullpath = files[ii]
         l1c_full_path, l1b_product_version = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
         if os.path.exists(l1c_full_path) and overwrite is False:
-            logging.info('%s already exists', l1c_full_path)
+            logging.debug('%s already exists', l1c_full_path)
             cpt_already += 1
         else:
-            ds_intra, ancillary_product_found = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list,
+            ds_intra, ancillary_product_found,ancillaries_flag_added = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list,
                                                                        cwave=cwave, macs=macs,
                                                                        colocat=colocat,
                                                                        time_separation=time_separation)
-            if ancillary_product_found:
-                cpt_ancillary_products_found += 1
+            # if ancillary_product_found:
+            #     cpt_ancillary_products_found += 1
+            for anc in ancillaries_flag_added:
+                if ancillaries_flag_added[anc]:
+                    cpt[anc+' ancillary_field_added'] += 1
+                else:
+                    cpt[anc+' missing'] += 1
             save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
-            logging.info('successfully wrote  %s', l1c_full_path)
+            logging.debug('successfully wrote  %s', l1c_full_path)
             cpt_success += 1
-    return 0
+    logging.info('cpt %s',cpt)
+    logging.info('last file written %s',l1c_full_path)
+    return cpt_success,cpt_already,cpt_ancillary_products_found,cpt_total
 
 
 def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=True, colocat=True,
@@ -109,7 +122,7 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
 
     Parameters
     ----------
-    l1b_fullpath str
+    l1b_fullpath str a measurement
     ancillary_list [] optional
     cwave bool
     macs bool
@@ -165,11 +178,13 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     # ====================
     # COLOC
     # ====================
+    ancillaries_flag_added = {}
     if colocat:
         for ancillary in ancillary_list:
-            ds_intra, ancillary_product_found = append_ancillary_field(ancillary, ds_intra)
+            ds_intra, ancillary_product_found,flag_ancillary_field_added = append_ancillary_field(ancillary, ds_intra)
+            ancillaries_flag_added[ancillary['name']] = flag_ancillary_field_added
 
-    return ds_intra, ancillary_product_found
+    return ds_intra, ancillary_product_found,ancillaries_flag_added
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -190,12 +205,14 @@ def append_ancillary_field(ancillary, ds_intra):
 
     # ===========================================
     ## Check if the ancillary data can be found
+    flag_ancillary_field_added = False
     logging.debug('attrs : %s0', ds_intra.attrs['start_date'])
     sar_date = datetime.strptime(str.split(ds_intra.attrs['start_date'], '.')[0], '%Y-%m-%d %H:%M:%S')
     closest_date, filename = resource_strftime(ancillary['resource'], step=ancillary['step'], date=sar_date)
     if len(glob(filename)) != 1:
         logging.debug('no ancillary files matching %s', filename)
     else:
+        flag_ancillary_field_added = True
         raster_ds = None
         ancillary_product_found = True
         # Getting the raster from anxillary data
@@ -224,7 +241,7 @@ def append_ancillary_field(ancillary, ds_intra):
             # Merging the datasets
             ds_intra = xr.merge([ds_intra, _ds_intra])
 
-    return ds_intra, ancillary_product_found
+    return ds_intra, ancillary_product_found,flag_ancillary_field_added
 
 
 def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
@@ -285,7 +302,7 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, version, version_L1B):
     #
     # Saving the results in netCDF
     dt.to_netcdf(l1c_full_path)
-    logging.info('output file written successfully: %s',l1c_full_path)
+    logging.debug('output file written successfully: %s',l1c_full_path)
 
 
 def main():
@@ -318,9 +335,17 @@ def main():
     t0 = time.time()
     logging.info('product version to produce: %s', args.version)
     logging.info('outputdir will be: %s', args.outputdir)
-    do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe, version=args.version, outputdir=args.outputdir, cwave=True, macs=True,
+    cpt_success,cpt_already,cpt_ancillary_products_found,cpt_total = do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe,
+                                version=args.version, outputdir=args.outputdir, cwave=True, macs=True,
                               colocat=True,
                               time_separation='2tau', overwrite=args.overwrite, dev=args.dev)
+    logging.info('file written: %s/%s ancillary : %s, already: %s' ,
+        cpt_success, cpt_total, cpt_ancillary_products_found, cpt_already)
+    if cpt_already+cpt_success==cpt_total:
+        logging.info('successful L1C processing')
+    else:
+        logging.info('there is at least an error in this processing')
+    logging.info('outputdir was: %s', args.outputdir)
     logging.info('peak memory usage: %s Mbytes', get_memory_usage())
     logging.info('done in %1.3f min', (time.time() - t0) / 60.)
 
