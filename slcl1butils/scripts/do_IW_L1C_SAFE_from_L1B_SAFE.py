@@ -44,7 +44,7 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
     Returns:
 
     """
-
+    l1c_full_path = None
     # Ancillary data to be colocated
     ancillary_ecmwf = {}
     ancillary_ecmwf['resource'] = conf['ecmwf0.1_pattern']
@@ -80,22 +80,28 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
     cpt = defaultdict(int)
     pbar = tqdm(range(len(files)))
     for ii in pbar:
-        cpt['L1B_traeted'] += 1
+        cpt['L1B_treated'] += 1
         pbar.set_description('')
         l1b_fullpath = files[ii]
         l1c_full_path = get_l1c_filepath(l1b_fullpath,version=version, outputdir=outputdir)
         if os.path.exists(l1c_full_path) and overwrite is False:
-            logging.info('%s already exists', l1c_full_path)
+            logging.debug('%s already exists', l1c_full_path)
+            cpt['nc_out_already_present'] += 1
         else:
-            ds_intra, ds_inter = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
+            ds_intra, ds_inter, flag_ancillaries_added = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
                                                         colocat=colocat,
                                                         time_separation=time_separation)
+            for anc in flag_ancillaries_added:
+                if flag_ancillaries_added[anc]:
+                    cpt[anc+' ancillary_field_added'] += 1
+                else:
+                    cpt[anc+' missing'] += 1
             #pdb.set_trace()
             if 'xspectra_Re' in ds_inter:
                 save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter,version=version)
                 cpt['saved_in_nc'] += 1
             else:
-                logging.info('there is no xspectra in this subswath -> the L1C will not be saved')
+                logging.debug('there is no xspectra in this subswath -> the L1C will not be saved')
                 cpt['L1B_without_spectra'] += 1
     logging.info('cpt: %s',cpt)
     return l1c_full_path
@@ -103,8 +109,23 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
 
 def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=True, colocat=True,
                            time_separation='2tau'):
+    """
 
-    logging.info('File in: %s', l1b_fullpath)
+    Args:
+        l1b_fullpath: str one single sub-swath
+        ancillary_list: list
+        cwave: bool
+        macs: bool
+        colocat: cool
+        time_separation: str
+
+    Returns:
+        ds_intra: xarray.Dataset
+        ds_inter: xarray.Dataset
+        ancillary_fields_added: bool
+    """
+
+    logging.debug('File in: %s', l1b_fullpath)
     if ancillary_list is None:
         ancillary_list = []
     # ====================
@@ -156,29 +177,46 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     # ====================
     # COLOC
     # ====================
+    flag_ancillaries = {}
     if colocat:
         for ancillary in ancillary_list:
             logging.debug('ancillary: %s',ancillary)
-            ds_intra, ds_inter = append_ancillary_field(ancillary, ds_intra, ds_inter)
-    return ds_intra, ds_inter
+            ds_intra, ds_inter,ancillary_fields_added = append_ancillary_field(ancillary, ds_intra, ds_inter)
+            flag_ancillaries[ancillary['name']] = ancillary_fields_added
+    return ds_intra, ds_inter, flag_ancillaries
 
 
 def append_ancillary_field(ancillary, ds_intra, ds_inter):
+    """
+
+    Args:
+        ancillary: xarray.Dataset
+        ds_intra: xarray.Dataset
+        ds_inter: xarray.Dataset
+
+    Returns:
+        ds_intra: xarray.Dataset
+        ds_inter: xarray.Dataset
+        ancillary_fields_added: bool
+    """
     # For each L1B
     # burst_type = 'intra'
     # l1b_ds = xr.open_dataset(_file,group=burst_type+'burst')
 
     # ===========================================
     ## Check if the ancillary data can be found
+    ancillary_fields_added = False
     sar_date = datetime.strptime(str.split(ds_intra.attrs['start_date'], '.')[0], '%Y-%m-%d %H:%M:%S')
     closest_date, filename = resource_strftime(ancillary['resource'], step=ancillary['step'], date=sar_date)
-    if (len(glob(filename)) != 1):
-        logging.info('no ancillary files matching %s', filename)
-        return ds_intra,ds_inter
+    if len(glob(filename)) != 1:
+        logging.debug('no ancillary files matching %s', filename)
+        return ds_intra,ds_inter,ancillary_fields_added
+    else:
+        ancillary_fields_added = True
     # Getting the raster from anxillary data
-    if (ancillary['name'] == 'ecmwf_0100_1h'):
+    if ancillary['name'] == 'ecmwf_0100_1h':
         raster_ds = ecmwf_0100_1h(filename)
-    if (ancillary['name'] == 'ww3_global_yearly_3h'):
+    if ancillary['name'] == 'ww3_global_yearly_3h':
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
 
     # Get the polygons of the swath data
@@ -191,7 +229,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     for burst_type in burst_types:
         # Define the dataset to work on
         # get the mapped raster onto swath grid for each tile
-        if (burst_type == 'intra'):
+        if burst_type == 'intra':
             # l1b_ds_intra = xr.open_dataset(_file,group=burst_type+'burst')
             # _ds = coloc_tiles_from_l1bgroup_with_raster(l1b_ds_intra, raster_bb_ds, apply_merging=False)
             # ds_intra_list.append(_ds)
@@ -207,8 +245,8 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             # ds_inter_list.append(_ds_inter)
             # Merging the datasets
             ds_inter = xr.merge([ds_inter, _ds_inter])
-    logging.info('ancillary fields added')
-    return ds_intra, ds_inter
+    logging.debug('ancillary fields added')
+    return ds_intra, ds_inter, ancillary_fields_added
 
 
 def get_l1c_filepath(l1b_fullpath,version, outputdir=None,makedir=True):
@@ -239,7 +277,7 @@ def get_l1c_filepath(l1b_fullpath,version, outputdir=None,makedir=True):
     l1c_full_path = os.path.join(pathout, os.path.basename(l1b_fullpath).replace('L1B', 'L1C'))
     lastpiece = l1c_full_path.split('_')[-1]
     l1c_full_path = l1c_full_path.replace(lastpiece,version+'.nc')
-    logging.info('File out: %s ', l1c_full_path)
+    logging.debug('File out: %s ', l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
     return l1c_full_path
