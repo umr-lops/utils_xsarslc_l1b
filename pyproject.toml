@@ -19,7 +19,6 @@ dependencies = [
     "netCDF4",
     "shapely",
     "xarray-datatree",
-    "importlib_resources",
     'tqdm',
     "zarr",
     'fsspec',
