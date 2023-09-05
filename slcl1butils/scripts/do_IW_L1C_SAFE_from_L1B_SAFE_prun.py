@@ -34,7 +34,7 @@ if __name__ == '__main__':
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v3.txt' # the most complete for SAFE 1.4k L1B
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.1.txt' #2km decimated with negative overlap
     listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8.txt' # 17.7km all TC 899 SAFE
-    listing = '/home1/scratch/agrouaze/listing_IW_SLC_tiff_ifremer_medium_size_v25aug2023_noduplicate.txt'
+    # listing = '/home1/scratch/agrouaze/listing_IW_SLC_tiff_ifremer_medium_size_v25aug2023_noduplicate.txt'
    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/L1B_L1C_listing_safe_missing_IW_1.4k_operational.txt'
    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/L1B_L1C_listing_safe_missing_IW_1.4j.txt'
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_test.txt'

@@ -70,32 +70,34 @@ def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=Tr
     Returns:
 
     """
-    if l1b_ds.swath=='IW':
+    if l1b_ds.swath in ['IW','EW']:
         latsar_without_nan = l1b_ds.latitude.interpolate_na(
             dim="tile_sample", method="linear", fill_value="extrapolate")
         lonsar_without_nan = l1b_ds.longitude.interpolate_na(
             dim="tile_sample", method="linear", fill_value="extrapolate")
-    else:
+    else: # for WV
         latsar_without_nan = l1b_ds.latitude
         lonsar_without_nan = l1b_ds.longitude
     mapped_ds_list = []
     for var in raster_bb_ds:
         raster_da = raster_bb_ds[var]
-        upscaled_da = raster_da.interp(
-            x=lonsar_without_nan.values.flatten(), y=latsar_without_nan.values.flatten()
-        )
+        # if latsar_without_nan
+        if l1b_ds.swath=='WV':
+            upscaled_da = raster_da.interp(
+                x=lonsar_without_nan.values.flatten(), y=latsar_without_nan.values.flatten()
+            )
+        else:
+            upscaled_da = raster_da
         upscaled_da.name = var
         upscaled_da = upscaled_da.astype(float) #added by agrouaze to fix TypeError: No matching signature found at interpolation
         # it turns out that this line is super important ot get the coordinates of the L1B SAr dataset instead of x,y
-        if l1b_ds.swath=='WV':
+        if l1b_ds.swath == 'WV':
             projected_field = upscaled_da.drop_vars(['x', 'y'])
-        else: # it is checked that IW needs the following line for both ECMWD and WW3 , if applied on WV leads to NaN WW3 values, Aug 2023
-            projected_field = upscaled_da.interp(x=lonsar_without_nan,y=latsar_without_nan,assume_sorted=False).drop_vars(['x', 'y'])
+        else: # IW needs the following line for both ECMWD and WW3 , if applied on WV leads to NaN WW3 values, Aug 2023
+            projected_field = upscaled_da.interp(x=lonsar_without_nan,
+                                                 y=latsar_without_nan,
+                                                 assume_sorted=False).drop_vars(['x', 'y'])
         mapped_ds_list.append(projected_field)
-        # fix double interpolation 11 april 2023
-        # mapped_ds_list.append(
-        #     upscaled_da.drop_vars(['x', 'y'])
-        # )
     raster_mapped = xr.merge(mapped_ds_list)
     merged_raster_mapped = xr.merge([l1b_ds, raster_mapped])
 
