@@ -29,15 +29,21 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-5s %(message)s',
                             datefmt='%d/%m/%Y %H:%M:%S')
     prunexe = '/appli/prun/bin/prun'
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k.txt' # 5781 SAFE, 632Go en L1B
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v2.txt' 
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v3.txt' # the most complete for SAFE 1.4k L1B
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.1.txt' #2km decimated with negative overlap
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8.txt' # 17.7km all TC 899 SAFE
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k.txt' # 5781 SAFE, 632Go en L1B
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v2.txt'
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_v3.txt' # the most complete for SAFE 1.4k L1B
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.1.txt' #2km decimated with negative overlap
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8.txt' # 17.7km all TC 899 SAFE
     # listing = '/home1/scratch/agrouaze/listing_IW_SLC_tiff_ifremer_medium_size_v25aug2023_noduplicate.txt'
    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/L1B_L1C_listing_safe_missing_IW_1.4k_operational.txt'
    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/L1B_L1C_listing_safe_missing_IW_1.4j.txt'
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_1.4k_test.txt'
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_v2run_not_finished.txt'
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_v3.txt'
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.9_v1.txt'
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_v4.txt'
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_without_l1c_29sept23.txt' # vcoems from check_sar_wave_processing_completness.ipynb
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/case-studies/TC_SURIGAE_2021_IW_XSP_SAFE_L1B_v1.txt'
     logging.info('outputdir : %s',args.outputdir)
     # modify initial listing with more args
     listing2 = listing + '.modified'
