@@ -195,7 +195,7 @@ def display_polar_spectra(allspecs,heading,part='Re',limit_display_wv=100,title=
 
 def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fig,cat_xspec='intra',part='Re',
                                     rotation=False,orbit_pass=None,platform_heading=None,dpi=100,figsize=(8,6),
-                                    outputfile=None):
+                                    outputfile=None,skip_symmetrize=False):
     """
 
     Parameters
@@ -226,7 +226,7 @@ def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fi
     add_colorbar = True
     #fig = plt.figure()
     set_xspec = ds[{'burst':bursti,'tile_line':tile_line_i,'tile_sample':tile_sample_i}]
-    if 'k_az' in  set_xspec.dims:
+    if 'k_az' in  set_xspec.dims or skip_symmetrize is True:
         print('symmetrize and swap_dims already done')
     else:
         set_xspec = set_xspec.swap_dims({'freq_line': 'k_az', 'freq_sample': 'k_rg'})
@@ -260,7 +260,10 @@ def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fi
         outf = '/tmp/spectra_cart_iw_tiff_one_tile.png'
         plt.savefig(outf)
         img = matplotlib.pyplot.imread(outf)
-        rot_ang = -(180 + platform_heading)
+        if platform_heading<-45:
+            rot_ang = -(180 + platform_heading)
+        else:
+            rot_ang = platform_heading
         print('rot_ang',rot_ang)
         #plt.figure()
         img_45 = ndimage.rotate(img, rot_ang, reshape=True)
@@ -421,7 +424,7 @@ def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display
         plt.text(-0.001,0.05,'azimuth',color='c',rotation=90, va='center',fontsize=7)
         plt.plot([-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], [0, 0], 'r--',alpha=0.7)
         plt.text(0.05, 0.004, 'range', color='r', rotation=0, va='center',fontsize=7)
-        crossSpectraRe_red = crossSpectraRe_red.transpose("k_az", "k_rg")
+        crossSpectraRe_red = crossSpectraRe_red.transpose(ky_varname, kx_varname)
         im = crossSpectraRe_red.plot(cmap=thecmap,alpha=0.8,add_colorbar=add_colorbar,vmax=vmax)
         add_cartesian_wavelength_circles(default_values=circles_wavelength)
 
@@ -429,7 +432,8 @@ def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display
 
         plt.legend(loc=1)
         plt.grid(True)
-
+        plt.xlim(-2.0*np.pi/limit_display_wv,2.0*np.pi/limit_display_wv)
+        plt.ylim(-2.0*np.pi/limit_display_wv,2.0*np.pi/limit_display_wv)
         #display_xspectra_grid.circle_plot(ax,r=[300,400,500,600])
         #ax.set_rmax(2.0*np.pi/limit_display_wv)
         if title is None:
