@@ -18,6 +18,7 @@ from slcl1butils.coloc.coloc import raster_cropping_in_polygon_bounding_box, col
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv
 from slcl1butils.compute.cwave import compute_cwave_parameters
 from slcl1butils.compute.macs import compute_macs
+from slcl1butils.coloc.coloc_WV_WW3spectra import resampleWW3spectra_on_SAR_cartesian_grid
 from slcl1butils.get_config import get_conf
 from tqdm import tqdm
 from slcl1butils.utils import get_memory_usage
@@ -97,7 +98,7 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
             logging.debug('%s already exists', l1c_full_path)
             cpt_already += 1
         else:
-            ds_intra, ancillary_product_found,ancillaries_flag_added = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list,
+            ds_intra, ancillaries_flag_added = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list,
                                                                        cwave=cwave, macs=macs,
                                                                        colocat=colocat,
                                                                        time_separation=time_separation)
@@ -108,7 +109,8 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
                     cpt[anc+' ancillary_field_added'] += 1
                 else:
                     cpt[anc+' missing'] += 1
-            save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
+            # save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
+            save_l1c_to_zarr(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
             logging.debug('successfully wrote  %s', l1c_full_path)
             cpt_success += 1
     logging.info('cpt %s',cpt)
@@ -183,8 +185,10 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
         for ancillary in ancillary_list:
             ds_intra, ancillary_product_found,flag_ancillary_field_added = append_ancillary_field(ancillary, ds_intra)
             ancillaries_flag_added[ancillary['name']] = flag_ancillary_field_added
-
-    return ds_intra, ancillary_product_found,ancillaries_flag_added
+    if 'WV' in l1b_fullpath:
+        ds_intra , flag_ww3spectra_added, flag_ww3spectra_found = resampleWW3spectra_on_SAR_cartesian_grid(dsar=ds_intra)
+        ancillaries_flag_added['ww3spectra'] = flag_ww3spectra_added
+    return ds_intra,ancillaries_flag_added
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -268,7 +272,8 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     l1c_full_path = os.path.join(pathout, os.path.basename(l1b_fullpath).replace('L1B', 'L1C'))
     lastpiece = l1c_full_path.split('_')[-1]
     l1b_product_version = lastpiece.replace('.nc', '')
-    l1c_full_path = l1c_full_path.replace(lastpiece, version + '.nc')
+    # l1c_full_path = l1c_full_path.replace(lastpiece, version + '.nc')
+    l1c_full_path = l1c_full_path.replace(lastpiece, version + ".zarr")
     logging.debug('File out: %s ', l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
@@ -302,6 +307,35 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, version, version_L1B):
     #
     # Saving the results in netCDF
     dt.to_netcdf(l1c_full_path)
+    logging.debug('output file written successfully: %s',l1c_full_path)
+
+def save_l1c_to_zarr(l1c_full_path, ds_intra, version, version_L1B):
+    """
+
+    Args:
+        l1c_full_path: str
+        ds_intra: xr.Dataset intra burst
+        version : str (e.g. 1.4)
+        version_L1B : str  (e.g. 1.4)
+    Returns:
+
+    """
+    #
+    # Arranging & saving Results
+    # Building the output datatree
+    dt = DataTree()
+    burst_type = 'intra'
+    dt[burst_type + 'burst'] = DataTree(data=ds_intra)
+
+    dt.attrs['version_l1butils'] = slcl1butils.__version__
+    dt.attrs['L1C_product_version'] = version
+    dt.attrs['processor'] = __file__
+    dt.attrs['generation_date'] = datetime.today().strftime('%Y-%b-%d')
+    dt.attrs['L1B_product_version'] = version_L1B
+
+    #
+    # Saving the results in netCDF
+    dt.to_zarr(l1c_full_path)
     logging.debug('output file written successfully: %s',l1c_full_path)
 
 
