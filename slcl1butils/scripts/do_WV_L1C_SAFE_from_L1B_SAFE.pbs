@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #PBS -l walltime=20:40:00
 #PBS -l mem=700m
-#PBS -N L1B-L1C
+#PBS -N L1B-L1Cwv
 #PBS -m n
 
 echo start

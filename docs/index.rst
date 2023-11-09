@@ -9,9 +9,6 @@ Acquisition modes available in L1B IFREMER product family are IW and WV.
 The products are *netCDF* files containing `datatree`_ object.
 
 
-.. jupyter-execute:: examples/intro.py
-
-
 
 .. image:: oceanspectrumSAR.png
    :width: 500px
@@ -28,8 +25,10 @@ Documentation
 Overview
 ........
 
-    **slcl1butils**  helps to read L1B products (especially IW TOPS Scan SAR acquisitions) containing both intra burst and
-    inter (i.e. overlapping bursts) burst cross spectrum.
+**slcl1butils**  features:
+
+#. helps to read L1B products (especially IW TOPS Scan SAR acquisitions) containing both intra burst and inter (i.e. overlapping bursts) burst cross spectrum.
+#. contains the SAR processor Level-1B  -> Level-1C, allowing to co-locate and enrich the SAR acquisitions with WW3 grid, ECMWF grid and WW3-spectra.
 
 
 

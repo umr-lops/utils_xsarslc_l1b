@@ -1,5 +1,5 @@
 
-__all__ = ['utils','compute','plotting','scripts','coloc','compute.macs']
+__all__ = ['utils','compute','plotting','scripts','coloc','legacy_ocean']
 try:
     from importlib import metadata
 except ImportError: # for Python<3.8

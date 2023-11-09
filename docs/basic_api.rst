@@ -9,7 +9,7 @@ API = Application Programming Interface
 
 
 .. automodule:: slcl1butils
-    :members: compute,plotting,coloc
+    :members: compute,plotting,coloc,legacy_ocean
 
 
 processing

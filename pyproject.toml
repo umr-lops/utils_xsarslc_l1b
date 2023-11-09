@@ -24,7 +24,8 @@ dependencies = [
     'fsspec',
     'matplotlib',
     'scipy',
-    'aiohttp'
+    'aiohttp',
+    'pyfftw'
 ]
 dynamic = ["version"]
 

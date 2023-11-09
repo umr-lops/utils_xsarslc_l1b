@@ -348,7 +348,8 @@ def main():
     logging.info('outputdir will be: %s', args.outputdir)
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe,version=args.version,outputdir=args.outputdir, cwave=True, macs=True, colocat=True,
                                   time_separation='2tau', overwrite=args.overwrite,dev=args.dev)
-    logging.info('%s successfully written',final_L1C_path)
+    logging.info('last tiff available for this SAFE: %s',final_L1C_path)
+    logging.info('successful SAFE processing')
     logging.info('peak memory usage: %s ', get_memory_usage())
     logging.info('done in %1.3f min', (time.time() - t0) / 60.)
 
