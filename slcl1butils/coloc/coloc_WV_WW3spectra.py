@@ -6,6 +6,7 @@ import datetime
 import logging
 import numpy as np
 from ocean.xspectrum import from_ww3
+from ocean.xPolarSpectrum import find_closest_ww3
 from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
 def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
     """
@@ -35,15 +36,12 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
     if pathww3sp:
         if os.path.exists(pathww3sp):
             flag_ww3spectra_found = True
-            # print(pathww3sp,os.path.exists(pathww3sp))
-            #ds_raw_ww3 = xr.open_dataset(pathww3sp)
-            # dsar = xr.open_dataset(l1bwv)
             dk_az = np.diff(xs2tau['k_az'])
             dk_rg = np.diff(xs2tau['k_rg'])
             dk = (dk_rg.mean(),dk_az.mean())
             xs2tau["k_rg"].attrs['dkx'] = dk[0] #temporarily add dkx attrs
             xs2tau["k_az"].attrs["dky"] = dk[1] #temporarily add dky attrs
-            kmax = (xs2tau['k_rg'].values.max(),xs2tau['k_az'].values.max())
+            kmax = (np.abs(xs2tau['k_rg']).max().item(),np.abs(xs2tau['k_az']).max().item()) #FN reviewed
             lonwv1 = dsar['longitude'].values
             latwv1 = dsar['latitude'].values
             # timewv1 = datetime.datetime.strptime(os.path.basename(l1bwv).split('-')[4],'%Y%m%dt%H%M%S')
@@ -52,16 +50,19 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
             logging.info('timewv1 :%s',start_date_dt)
             rotate = 90+heading # deg clockwise wrt North
             logging.info('rotate:%s',rotate)
-            extended_kx = np.hstack([np.array([-np.pi]),xs2tau['k_rg'].values,np.array([-np.pi])])
-            extended_ky = np.hstack([np.array([-np.pi]),xs2tau['k_az'].values,np.array([-np.pi])])
-            extended_kx = xr.DataArray(extended_kx,dims=['k_rg'],coords={'k_rg':extended_kx})
-            extended_ky = xr.DataArray(extended_ky, dims=["k_az"], coords={"k_az": extended_ky})
-            ds_ww3_cartesian = from_ww3(pathww3sp,kx=extended_kx,ky=extended_ky, dk=dk,kmax=kmax,strict='kmax',
+            # add the raw  EFTH(f,dir) spectra from WW3
+            dsww3raw = xr.open_dataset(pathww3sp)
+            # add the interpolated cartesian EFTH(kx,ky) spectra from WW3
+            ds_ww3_cartesian = from_ww3(pathww3sp,dk=dk,kmax=kmax,strict='dk',
                                         rotate=rotate,clockwise_to_trigo=True,
-                                        lon=lonwv1,lat=latwv1,time=start_date_dt)
+                                        lon=lonwv1,lat=latwv1,time=start_date_dt) # TODO use sensingTime
             ds_ww3_cartesian.attrs['source'] = 'ww3'
             #TODO: check kx ky names to be same as the one from intra burst ds
-            dsar = xr.merge([dsar, ds_ww3_cartesian])
+            indiceww3spectra = find_closest_ww3(ww3_path=pathww3sp, lon=lonwv1, lat=latwv1, time=start_date_dt)
+            rawspww3 = dsww3raw['efth'].isel(time=indiceww3spectra).rename('ww3EFTHraw')
+            rawspww3.attrs['description'] = 'raw EFTH(f,dir) spectra'
+            ds_ww3_cartesian = ds_ww3_cartesian.swap_dims({'kx':"k_rg",'ky':"k_az"}).T
+            dsar = xr.merge([dsar, ds_ww3_cartesian,rawspww3])
             flag_ww3spectra_added = True
     return dsar,flag_ww3spectra_added,flag_ww3spectra_found
 
