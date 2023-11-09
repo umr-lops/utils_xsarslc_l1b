@@ -1,4 +1,6 @@
 import os
+import pdb
+
 import xarray as xr
 import datetime
 import logging
@@ -50,7 +52,11 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
             logging.info('timewv1 :%s',start_date_dt)
             rotate = 90+heading # deg clockwise wrt North
             logging.info('rotate:%s',rotate)
-            ds_ww3_cartesian = from_ww3(pathww3sp,kx=xs2tau['k_rg'],ky=xs2tau['k_az'], dk=dk,kmax=kmax,strict='kmax',
+            extended_kx = np.hstack([np.array([-np.pi]),xs2tau['k_rg'].values,np.array([-np.pi])])
+            extended_ky = np.hstack([np.array([-np.pi]),xs2tau['k_az'].values,np.array([-np.pi])])
+            extended_kx = xr.DataArray(extended_kx,dims=['k_rg'],coords={'k_rg':extended_kx})
+            extended_ky = xr.DataArray(extended_ky, dims=["k_az"], coords={"k_az": extended_ky})
+            ds_ww3_cartesian = from_ww3(pathww3sp,kx=extended_kx,ky=extended_ky, dk=dk,kmax=kmax,strict='kmax',
                                         rotate=rotate,clockwise_to_trigo=True,
                                         lon=lonwv1,lat=latwv1,time=start_date_dt)
             ds_ww3_cartesian.attrs['source'] = 'ww3'
