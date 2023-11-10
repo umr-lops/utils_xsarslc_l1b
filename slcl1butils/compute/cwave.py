@@ -30,11 +30,11 @@ def compute_cwave_parameters(xs, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 
     dkx = np.mean(np.diff(xxs.k_rg))
     dky = np.mean(np.diff(xxs.k_az))
     xxsm = np.sqrt(xxs.real ** 2. + xxs.imag ** 2.)
-    xxsmn = xxsm / xxsm.sum(dim=['k_rg', 'k_az']) * dkx * dky
+    xxsmn = xxsm /( xxsm.sum(dim=['k_rg', 'k_az']) * dkx * dky)
 
     # CWAVE paremeters compution
-    cwave_parameters = ((kernel.cwave_kernel * xxsmn) * dky * dky).sum(dim=['k_rg', 'k_az']).rename(
-        'cwave_params').to_dataset()
+    cwave_parameters = ((kernel.cwave_kernel * xxsmn) * dkx * dky).sum(dim=['k_rg', 'k_az']).rename(
+        'cwave_params')#.to_dataset()
 
     return cwave_parameters
 
@@ -63,7 +63,7 @@ def compute_kernel(krg, kaz, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 * np
     # alpha k
     alpha_k = 2 * ((np.log10(np.sqrt(tmp)) - np.log10(kmin)) / (np.log10(kmax) - np.log10(kmin))) - 1
     # alpha phi
-    alpha_phi = np.arctan2(krg, kaz).rename(None)
+    alpha_phi = np.arctan2(kaz, krg).rename(None)
     # eta
     eta = np.sqrt((2. * tmp) / ((krg ** 2 + kaz ** 2) * tmp * np.log10(kmax / kmin)))
 
