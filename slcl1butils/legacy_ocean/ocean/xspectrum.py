@@ -26,8 +26,7 @@ def SpectrumCartesianGrid(*, dk= (2*np.pi/400., 2*np.pi/400.), kmax=(2*np.pi/0.2
     Nk = (int(np.rint(kmax[0]/dk[0]))*2, int(np.rint(kmax[1]/dk[1]))*2) # Nk points over the [-kmax, kmax[ span
 
     if next_fast_len:
-        from pyfftw import next_fast_len
-        Nk = next_fast_len(Nk[0]), next_fast_len(Nk[1])
+        pass
 
     if strict=='dk':
         k = (np.fft.fftshift(np.fft.fftfreq(Nk[0], 1./(Nk[0]*dk[0]))), np.fft.fftshift(np.fft.fftfreq(Nk[1], 1./(Nk[1]*dk[1])))) # dk is preserved
