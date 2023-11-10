@@ -42,8 +42,9 @@ if __name__ == '__main__':
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_v3.txt'
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.9_v1.txt'
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_v4.txt'
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_without_l1c_29sept23.txt' # vcoems from check_sar_wave_processing_completness.ipynb
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/case-studies/TC_SURIGAE_2021_IW_XSP_SAFE_L1B_v1.txt'
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/iw_l1b_safe_2.8_without_l1c_29sept23.txt' # vcoems from check_sar_wave_processing_completness.ipynb
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/case-studies/TC_SURIGAE_2021_IW_XSP_SAFE_L1B_v1.txt'
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/case-studies/IW_SLC_Ciaran2023_SAFE_L1B.txt'
     logging.info('outputdir : %s',args.outputdir)
     # modify initial listing with more args
     listing2 = listing + '.modified'
@@ -60,6 +61,7 @@ if __name__ == '__main__':
     didi = os.path.dirname(os.path.realpath(__file__))
     pbs = os.path.join(didi,'do_IW_L1C_SAFE_from_L1B_SAFE.pbs')
     logging.info('pbs file: %s',pbs)
+    logging.info('Number of SAFE to treat from Level-1B to Level-1C: %s',taille)
     # call prun
     if taille < 9999:
         opts = ' --split-max-lines=1 --background -e '

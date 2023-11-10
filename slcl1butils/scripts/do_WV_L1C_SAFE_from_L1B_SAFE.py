@@ -106,7 +106,7 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file, version, outputdir, cwave=True, ma
             #     cpt_ancillary_products_found += 1
             for anc in ancillaries_flag_added:
                 if ancillaries_flag_added[anc]:
-                    cpt[anc+' ancillary_field_added'] += 1
+                    cpt[anc+' OK'] += 1
                 else:
                     cpt[anc+' missing'] += 1
             # save_l1c_to_netcdf(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)

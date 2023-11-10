@@ -16,8 +16,7 @@ def get_conf():
         config_path = local_config_pontential_path
     else:
         config_path = os.path.join(os.path.dirname(slcl1butils.__file__), 'config.yaml')
-    logging.info('config path: %s',config_path)
-    print('config path:',config_path)
+    logging.debug('config path: %s',config_path)
     stream = open(config_path, 'r')
     conf = load(stream, Loader=Loader)
     return conf

@@ -63,7 +63,7 @@ def compute_kernel(krg, kaz, save_kernel=False, kmax=2 * np.pi / 25, kmin=2 * np
     # alpha k
     alpha_k = 2 * ((np.log10(np.sqrt(tmp)) - np.log10(kmin)) / (np.log10(kmax) - np.log10(kmin))) - 1
     # alpha phi
-    alpha_phi = np.arctan2(kaz, krg).rename(None)
+    alpha_phi = np.arctan2(krg, kaz).rename(None)
     # eta
     eta = np.sqrt((2. * tmp) / ((krg ** 2 + kaz ** 2) * tmp * np.log10(kmax / kmin)))
 

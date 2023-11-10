@@ -5,7 +5,7 @@
 #PBS -m n
 
 
-# memory needed if about 4Go for 17.7km tiles and 14Go for 2km tiles
+# memory needed if about 4Go for 17.7km tiles and 14Go for 2km tiles, 71 running in parallel on datarmor
 echo start
 # inputs
 
