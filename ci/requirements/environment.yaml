@@ -11,6 +11,7 @@ dependencies:
   - isort
   - black
   - dask-labextension
+  - distutils
   # testing
   - pytest
   - pytest-reportlog
