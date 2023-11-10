@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import logging
 from slcl1butils.legacy_ocean.ocean.spectrum_private.spectra_functions import tony_omni,tony_spread,findUstar
 #NG from shared.my_functions import *
 
@@ -147,7 +148,7 @@ def from_wavenumber(**kwargs):
         ustar = findUstar(ws, 10.)
         curv = tony_omni(ds.k, ws, ustar, omega)
         spread = tony_spread(ds.k, ws, omega)
-        # spread = 0.; print('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
+        # spread = 0.; logging.debug('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
         magnitude = curv/(2*np.pi*ds.k**4)*(1.+spread*np.cos(2*(ds.phi-ds.wd)))
         ds+=magnitude
         set_directivity(ds, kwargs.pop('directivity', 'alongwind'))
@@ -155,7 +156,7 @@ def from_wavenumber(**kwargs):
         raise ValueError('kudryavtsev spectrum not implemented in xPolarSpectrum')
         #  self.magnitude = np.transpose(kudryavtsev(self.k, angle_mpipi(self.t-self.windDir), self.dphi, self.windSpeed, self.fetch))/(self.km**4)
     else:
-        print('No wind sea spectrum defined')
+        logging.debug('No wind sea spectrum defined')
 
     if ('sa' in kwargs) or ('sk' in kwargs)  or ('sd' in kwargs):
         sa =  np.array(np.double(kwargs.pop('sa', 1.)), ndmin=1)
@@ -169,7 +170,7 @@ def from_wavenumber(**kwargs):
         swell_magnitude = np.zeros(ds.shape)
         jk = list()
         jt = list()
-        print('Sine wavenumbers and directions are (re)defined to :')
+        logging.debug('Sine wavenumbers and directions are (re)defined to :')
         for e in sk:
             jk.append(np.argmin(np.abs(ds.k.data-e)))
         for e in np.radians(sa):
@@ -177,7 +178,7 @@ def from_wavenumber(**kwargs):
         for i, (ik,it) in enumerate(zip(jk, jt)):
             dk = ds.dk[ik] if len(np.array(ds.dk, ndmin=1))>1 else ds.dk
             swell_magnitude[ik, it] = 0.5*(sa[i]/np.sqrt((ds.k[ik]*dk*ds.dphi)))**2
-            print(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, round(float(ds.k[ik]),3), i, sa[i], i, round(np.rad2deg(float(ds.phi[it])),3), i, round(2*np.pi/float(ds.k[ik]),3), i, round(np.sqrt(gravity*float(ds.k[ik]))/(2.*np.pi),3)))
+            logging.debug(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, round(float(ds.k[ik]),3), i, sa[i], i, round(np.rad2deg(float(ds.phi[it])),3), i, round(2*np.pi/float(ds.k[ik]),3), i, round(np.sqrt(gravity*float(ds.k[ik]))/(2.*np.pi),3)))
 
         ds+= swell_magnitude
     ds[np.where(np.isinf(ds))] = 0.
@@ -277,10 +278,10 @@ def from_ww3(ds, *, station_index=None, time_index=None, rotate=0., shortWavesFi
 
     if 'time' in specWW3.efth.dims:
         ww3_kwargs.update({'time':time_index})
-        print('spectrum imported at time index {} :{} @ (lon:{}, lat:{})'.format(time_index, specWW3.time[{'time':time_index}].data, specWW3[ww3_kwargs]['longitude'].data, specWW3[ww3_kwargs]['latitude'].data))
+        logging.debug('spectrum imported at time index {} :{} @ (lon:{}, lat:{})'.format(time_index, specWW3.time[{'time':time_index}].data, specWW3[ww3_kwargs]['longitude'].data, specWW3[ww3_kwargs]['latitude'].data))
     if 'station' in specWW3.efth.dims:
         ww3_kwargs.update({'station':station_index})
-        print('spectrum imported at station index {} :{}'.format(station_index, specWW3.station[{'station':station_index}].data))
+        logging.debug('spectrum imported at station index {} :{}'.format(station_index, specWW3.station[{'station':station_index}].data))
 
     myspec = (2.*np.pi)/np.sqrt(gravity*k[:,np.newaxis])*gravity*specWW3.efth[ww3_kwargs]/(8.*np.pi**2*k[:,np.newaxis])
     myspec = myspec.assign_coords(frequency=k)
@@ -298,14 +299,14 @@ def from_ww3(ds, *, station_index=None, time_index=None, rotate=0., shortWavesFi
     try:
         myspec.attrs.update({'wd':np.radians(specWW3[ww3_kwargs].wnddir.data+180), 'ws':specWW3[ww3_kwargs].wnd.data})# wnddir (in WW3 files) is the direction the wind is coming from
     except:
-        print('No wind information found in file !')
+        logging.debug('No wind information found in file !')
         # if 'ws' in kwargs and 'wd' in kwargs:
         # myspec.attrs.update({'wd':np.radians(kwargs.pop('wd')), 'ws':kwargs.pop('ws')})
-        # print('wind speed and direction have been set to provided ones: {} m/s, {} deg from North-clockwise.'.format(myspec.ws, np.degrees(myspec.wd)))
+        # logging.debug('wind speed and direction have been set to provided ones: {} m/s, {} deg from North-clockwise.'.format(myspec.ws, np.degrees(myspec.wd)))
         # else:
 
 
-    if clockwise_to_trigo and (rotate!=0.):print('Rotation angle has to be in clockwise convention because clockwise-to-trigo transformation is applied BEFORE the rotation. (Apply a minus sign on rotation angle to do it in clockwise convention).')
+    if clockwise_to_trigo and (rotate!=0.):logging.debug('Rotation angle has to be in clockwise convention because clockwise-to-trigo transformation is applied BEFORE the rotation. (Apply a minus sign on rotation angle to do it in clockwise convention).')
     if clockwise_to_trigo:
         myspec = swap_clockwise_trigo(myspec)
         if 'wd' in kwargs: kwargs.update({'wd':-kwargs['wd']})
@@ -361,11 +362,11 @@ def apply_shortWavesFill(ds, *, kcut = 4000., **kwargs):
 
     if 'ws' in  kwargs:
         ds.attrs.update({'ws':kwargs.pop('ws')})
-        print('Wind speed replaced by provided one ({} m/s).'.format(ds.ws))
+        logging.debug('Wind speed replaced by provided one ({} m/s).'.format(ds.ws))
 
     if 'wd' in  kwargs:
         ds.attrs.update({'wd':np.radians(kwargs.pop('wd'))})
-        print('Wind direction replaced by provided one ({} deg in local convention).'.format(np.degrees(ds.wd)))
+        logging.debug('Wind direction replaced by provided one ({} deg in local convention).'.format(np.degrees(ds.wd)))
 
     spec = ocean.xPolarSpectrum.from_wavenumber(Nk = Nk, Nphi = ds.sizes['phi'], kmin = min(ds.k).data, kmax=kcut, ws = ds.ws, wd = np.degrees(ds.wd),**kwargs)
 
@@ -510,10 +511,10 @@ def find_closest_ww3(ww3_path, lon, lat, time):
     time_dist = np.abs(ww3spec.time-mytime)
     isel = np.where(time_dist==time_dist.min())
     spatial_dist = haversine(lon, lat, ww3spec[{'time':isel[0]}].longitude, ww3spec[{'time':isel[0]}].latitude)
-    #  print(spatial_dist)
+    #  logging.debug(spatial_dist)
     myind = isel[0][np.argmin(spatial_dist.data)]
 
-    print('Wave Watch III closest point @ {} km and {} minutes'.format(np.round(haversine(lon, lat, ww3spec[{'time':myind}].longitude, ww3spec[{'time':myind}].latitude).data,2), (ww3spec[{'time':myind}].time-mytime).data/(1e9*60)))
+    logging.debug('Wave Watch III closest point @ {} km and {} minutes'.format(np.round(haversine(lon, lat, ww3spec[{'time':myind}].longitude, ww3spec[{'time':myind}].latitude).data,2), (ww3spec[{'time':myind}].time-mytime).data/(1e9*60)))
 
     return myind
 

@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import logging
 # from ocean.spectrum_private.spectra_functions import *
 from slcl1butils.legacy_ocean.ocean.spectrum_private.spectra_functions import tony_omni,tony_spread,findUstar
 # from shared.my_functions import *
@@ -158,15 +159,15 @@ def from_wavenumber(**kwargs):
     # curv = dask.array.map_blocks(tony_omni, km.data, ws, ustar, omega)
     # spread = dask.array.map_blocks(tony_spread, km.data, ws, omega)
     # tm = tm.transpose(*km.dims)
-    ## spread = 0.; print('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
+    ## spread = 0.; logging.debug('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
     # ds = xr.DataArray((curv/(2*np.pi*km**4)*(1.+spread*np.cos(2*(tm-wd)))).compute(scheduler = myscheduler), dims = ('kx','ky'), coords={'kx':kx, 'ky':ky} , attrs = {'omega':omega,'ws':ws,'wd':wd,'fetch':fetch, 'dkx':dkx, 'dky':dky, 'units':'m**4/rad**2', 'cur':cur, 'curdir':curdir}, name='spectrum magnitude')
-    # print('Future warning : map_blocks function for xarray input is not available for now. It can leads to confusion on dimension when moving back to xarray. Please update ASAP', end='')
+    # logging.debug('Future warning : map_blocks function for xarray input is not available for now. It can leads to confusion on dimension when moving back to xarray. Please update ASAP', end='')
     # set_directivity(ds, kwargs.pop('directivity', 'alongwind'))
     # elif name == 'kudryavtsev':
     # raise ValueError('kudryavtsev spectrum not implemented in xspectrum')
     ## self.magnitude = np.transpose(kudryavtsev(self.k, angle_mpipi(self.t-self.windDir), self.dt, self.windSpeed, self.fetch))/(self.km**4)
     # else:
-    # print('No wind sea spectrum defined')
+    # logging.debug('No wind sea spectrum defined')
     if name == 'elfouhaily' and ws>0.:
         ustar = findUstar(ws, 10.)
         curv = xr.map_blocks(tony_omni, km, [ws, ustar, omega]).load()
@@ -177,13 +178,13 @@ def from_wavenumber(**kwargs):
         # ds = (curv/(2*np.pi*km**4)*(1.+spread*np.cos(2*(tm-wd)))).compute(scheduler = myscheduler)
         ds = ds.assign_coords(kx=kx, ky=ky).rename('spectrum magnitude')
         ds.attrs.update({'omega':omega,'ws':ws,'wd':wd,'fetch':fetch, 'dkx':dkx, 'dky':dky, 'units':'m**4/rad**2', 'cur':cur, 'curdir':curdir})
-        #  spread = 0.; print('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
+        #  spread = 0.; logging.debug('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
         set_directivity(ds, kwargs.pop('directivity', 'alongwind'))
     elif name == 'kudryavtsev':
         raise ValueError('kudryavtsev spectrum not implemented in xspectrum')
         #  self.magnitude = np.transpose(kudryavtsev(self.k, angle_mpipi(self.t-self.windDir), self.dt, self.windSpeed, self.fetch))/(self.km**4)
     else:
-        print('No wind sea spectrum defined')
+        logging.debug('No wind sea spectrum defined')
 
     if 'ds' not in locals(): ds = xr.DataArray(np.zeros((len(kx), len(ky))), dims = ('kx','ky'), coords={'kx':kx, 'ky':ky} , attrs = {'omega':omega,'ws':ws,'wd':wd,'fetch':fetch, 'dkx':dkx, 'dky':dky, 'units':'m**4/rad**2', 'cur':cur, 'curdir':curdir}, name='spectrum magnitude')
 
@@ -200,7 +201,7 @@ def from_wavenumber(**kwargs):
         swell_magnitude = np.zeros(km.shape)
         jkx = list()
         jky = list()
-        print('Sine wavenumbers and directions are redefined to :')
+        logging.debug('Sine wavenumbers and directions are redefined to :')
         for e in sk*np.cos(np.radians(sd)):
             jkx.append(np.argmin(np.abs(ds.kx.data-e)))
         for e in sk*np.sin(np.radians(sd)):
@@ -208,7 +209,7 @@ def from_wavenumber(**kwargs):
 
         for i,(ikx,iky) in enumerate(zip(jkx, jky)):
             swell_magnitude[ikx, iky] = 0.5*(sa[i]/np.sqrt((ds.dkx*ds.dky)))**2
-            print(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, np.round(float(km[ikx, iky]),3), i, sa[i], i, np.round(np.rad2deg(float(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data))),3), i, np.round(2*np.pi/float(km[ikx, iky]),3), i, np.round(np.sqrt(9.81*float(km[ikx, iky]))/(2.*np.pi),3)))
+            logging.debug(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, np.round(float(km[ikx, iky]),3), i, sa[i], i, np.round(np.rad2deg(float(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data))),3), i, np.round(2*np.pi/float(km[ikx, iky]),3), i, np.round(np.sqrt(9.81*float(km[ikx, iky]))/(2.*np.pi),3)))
         ds+= swell_magnitude
     ds[np.where(np.isinf(ds))] = 0.
     ds[np.where(np.isnan(ds))] = 0.
@@ -235,7 +236,7 @@ def compute_moments(ds, moments):
 
     for key in moments.keys():
         ni, nj, nw, a = key
-        if (nw>0) and (ds.cur>0.) : print('Current is not taken into account for computing moment {}'.format(key))
+        if (nw>0) and (ds.cur>0.) : logging.debug('Current is not taken into account for computing moment {}'.format(key))
         moments[key]=(((km*np.cos(tm-np.radians(a)))**int(ni)*(km*np.sin(tm-np.radians(a)))**int(nj)*(w**int(nw))*ds).sum()*ds.dkx*ds.dky).data
     ds.attrs['moments'].update(moments)
 
@@ -368,7 +369,7 @@ def from_wavenumber_old(**kwargs):
         ustar = findUstar(ws, 10.)
         curv = tony_omni(km, ws, ustar, omega)
         spread = tony_spread(km, ws, omega)
-        #  spread = 0.; print('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
+        #  spread = 0.; logging.debug('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
         magnitude = curv/(2*np.pi*km**4)*(1.+spread*np.cos(2*(tm-ds.wd)))
         #  ds.merge((xr.DataArray(magnitude, name = 'magnitude', dims=(['kx', 'ky']), attrs={'units':'m**4/rad**2'})).to_dataset(), join='left', inplace=True)
         ds+=magnitude
@@ -377,7 +378,7 @@ def from_wavenumber_old(**kwargs):
         raise ValueError('kudryavtsev spectrum not implemented in xspectrum')
         #  self.magnitude = np.transpose(kudryavtsev(self.k, angle_mpipi(self.t-self.windDir), self.dt, self.windSpeed, self.fetch))/(self.km**4)
     else:
-        print('No wind sea spectrum defined')
+        logging.debug('No wind sea spectrum defined')
 
     if ('sa' in kwargs) or ('sk' in kwargs)  or ('sd' in kwargs):
         sa =  np.array(np.double(kwargs.pop('sa', 1.)), ndmin=1)
@@ -391,7 +392,7 @@ def from_wavenumber_old(**kwargs):
         swell_magnitude = np.zeros(km.shape)
         jkx = list()
         jky = list()
-        print('Swell spectrum wavenumbers and directions are redefined to :')
+        logging.debug('Swell spectrum wavenumbers and directions are redefined to :')
         for e in sk*np.cos(np.radians(sd)):
             jkx.append(np.argmin(np.abs(ds.kx-e)))
         for e in sk*np.sin(np.radians(sd)):
@@ -399,7 +400,7 @@ def from_wavenumber_old(**kwargs):
 
         for i,(ikx,iky) in enumerate(zip(jkx, jky)):
             swell_magnitude[ikx, iky] = 0.5*(sa[i]/np.sqrt((ds.dkx*ds.dky)))**2
-            print(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, np.round(km[ikx, iky].data,3), i, sa[i], i, np.round(np.rad2deg(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data)),3), i, np.round(2*np.pi/km[ikx, iky].data,3), i, np.round(np.sqrt(9.81*km[ikx, iky].data)/(2.*np.pi),3)))
+            logging.debug(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, np.round(km[ikx, iky].data,3), i, sa[i], i, np.round(np.rad2deg(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data)),3), i, np.round(2*np.pi/km[ikx, iky].data,3), i, np.round(np.sqrt(9.81*km[ikx, iky].data)/(2.*np.pi),3)))
         ds+= swell_magnitude
     ds[np.where(np.isinf(ds))] = 0.
     ds[np.where(np.isnan(ds))] = 0.
