@@ -18,6 +18,5 @@ dependencies:
   - holoviews
   - geoviews
   - fsspec
-  - distutils
   - pip:
     - -e ../..
