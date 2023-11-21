@@ -16,8 +16,6 @@ import sys, os
 from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
 from slcl1butils.coloc.coloc import raster_cropping_in_polygon_bounding_box, coloc_tiles_from_l1bgroup_with_raster
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
-from slcl1butils.compute.cwave import compute_cwave_parameters
-from slcl1butils.compute.macs import compute_macs
 from slcl1butils.get_config import get_conf
 from slcl1butils.utils import get_memory_usage
 from collections import defaultdict
@@ -26,7 +24,7 @@ import warnings
 warnings.simplefilter(action='ignore')
 conf = get_conf()
 
-def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, macs=True, colocat=True,
+def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, colocat=True,
                               time_separation='2tau', overwrite=False,dev=False):
     """
 
@@ -34,8 +32,6 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
         full_safe_file: str (e.g. /path/to/l1b-ifremer-dataset/..SAFE)
         version: str version of the product to generate
         outputdir: str where to store l1c netcdf files
-        cwave: bool
-        macs: bool
         colocat: bool
         time_separation: str (e.g. '2tau')
         overwrite: bool True -> overwrite existing l1c if it exists
@@ -66,8 +62,6 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
 
     # Processing Parameters:
 
-    # sth = macs * cwave
-
     files = glob(os.path.join(run_directory, safe_file, '*_L1B_*nc'))
     logging.info('Number of files: %s', len(files))
     if len(files) == 0:
@@ -88,8 +82,8 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
             logging.debug('%s already exists', l1c_full_path)
             cpt['nc_out_already_present'] += 1
         else:
-            ds_intra, ds_inter, flag_ancillaries_added = enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=ancillary_list, cwave=cwave, macs=macs,
-                                                        colocat=colocat,
+            ds_intra, ds_inter, flag_ancillaries_added = enrich_onesubswath_l1b(l1b_fullpath,
+                                                        ancillary_list=ancillary_list,                                                        colocat=colocat,
                                                         time_separation=time_separation)
             for anc in flag_ancillaries_added:
                 if flag_ancillaries_added[anc]:
@@ -107,15 +101,13 @@ def do_L1C_SAFE_from_L1B_SAFE(full_safe_file,version, outputdir, cwave=True, mac
     return l1c_full_path
 
 
-def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=True, colocat=True,
+def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, colocat=True,
                            time_separation='2tau'):
     """
 
     Args:
         l1b_fullpath: str one single sub-swath
         ancillary_list: list
-        cwave: bool
-        macs: bool
         colocat: cool
         time_separation: str
 
@@ -140,40 +132,6 @@ def enrich_onesubswath_l1b(l1b_fullpath, ancillary_list=None, cwave=True, macs=T
     burst_type = 'inter'
     time_separation = 'None'
     xs_inter, ds_inter = compute_xs_from_l1b(l1b_fullpath, burst_type=burst_type, time_separation=time_separation)
-    # ====================
-    # CWAVE
-    # ====================
-    if cwave and xs_intra is not None and xs_inter is not None:
-        #
-        # CWAVE Processing Parameters
-        kmax = 2 * np.pi / 25
-        kmin = 2 * np.pi / 600
-        Nk = 4
-        Nphi = 5
-        # Intraburst at 2tau CWAVE parameters
-        ds_cwave_parameters_intra = compute_cwave_parameters(xs_intra, save_kernel=False, kmax=kmax, kmin=kmin,
-                                                             Nk=Nk, Nphi=Nphi)
-        # Interburst CWAVE parameters
-        ds_cwave_parameters_inter = compute_cwave_parameters(xs_inter, save_kernel=False, kmax=kmax, kmin=kmin,
-                                                             Nk=Nk, Nphi=Nphi)
-        # updating the L1B dataset
-        ds_intra = xr.merge([ds_intra, ds_cwave_parameters_intra])
-        ds_inter = xr.merge([ds_inter, ds_cwave_parameters_inter])
-
-    # ====================
-    # MACS
-    # ====================
-    if macs and xs_intra is not None and xs_inter is not None:
-        # MACS parameters
-        lambda_range_max = [50, 75, 100, 125, 150, 175, 200, 225, 250, 275]
-        # Intraburst at 2tau MACS
-        ds_macs_intra = compute_macs(xs_intra, lambda_range_max=lambda_range_max)
-        # Interburst MACS
-        ds_macs_inter = compute_macs(xs_inter, lambda_range_max=lambda_range_max)
-        # updating the L1B dataset
-        ds_intra = xr.merge([ds_intra, ds_macs_intra])
-        ds_inter = xr.merge([ds_inter, ds_macs_inter])
-
     # ====================
     # COLOC
     # ====================
@@ -346,7 +304,8 @@ def main():
     t0 = time.time()
     logging.info('product version to produce: %s', args.version)
     logging.info('outputdir will be: %s', args.outputdir)
-    final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe,version=args.version,outputdir=args.outputdir, cwave=True, macs=True, colocat=True,
+    final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(args.l1bsafe,version=args.version,outputdir=args.outputdir,
+                                colocat=True,
                                   time_separation='2tau', overwrite=args.overwrite,dev=args.dev)
     logging.info('last tiff available for this SAFE: %s',final_L1C_path)
     logging.info('successful SAFE processing')

@@ -15,13 +15,6 @@ API = Application Programming Interface
 processing
 ==========
 
-.. automodule:: slcl1butils.compute.macs
-    :members: compute_macs
-
-
-.. automodule:: slcl1butils.compute.cwave
-    :members: compute_cwave_parameters,compute_kernel,gegenbauer_polynoms,coef,nu,harmonic_functions
-
 .. automodule:: slcl1butils.compute.compute_from_l1b
     :members: compute_xs_from_l1b,compute_xs_from_l1b_wv
 
