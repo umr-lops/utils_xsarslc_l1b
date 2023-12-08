@@ -2,6 +2,7 @@ import pdb
 from slcl1butils.raster_readers import ecmwf_0100_1h
 from slcl1butils.raster_readers import ww3_global_yearly_3h
 from slcl1butils.raster_readers import resource_strftime
+from slcl1butils.raster_readers import ww3_IWL1Btrack_hindcasts_30min
 import sys, os
 from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
 from datetime import datetime, timedelta
@@ -152,6 +153,8 @@ def do_coloc_L1B_with_raster_SAFE(full_safe_file, ancillary_list, skip=True):
                 raster_ds = ecmwf_0100_1h(filename)
             if (ancillary['name'] == 'ww3_global_yearly_3h'):
                 raster_ds = ww3_global_yearly_3h(filename, closest_date)
+            if (ancillary['name']) == 'ww3hindcast_field':
+                raster_ds == ww3_IWL1Btrack_hindcasts_30min(filename,closest_date)
 
             # Get the polygons of the swath data
             polygons = get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=True)
