@@ -36,7 +36,7 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
     # replace the half spectrum by a single variable, to save complexe values only possibility is zarr
     dsar = dsar.drop_vars(["xspectra_2tau_Re", "xspectra_2tau_Im"])
     dsar = dsar.drop_dims(["freq_sample", "freq_line"])
-    dsar["xs2tau"] = xs2tau
+    dsar["xspectra_2tau"] = xs2tau
     start_date_dt = datetime.datetime.strptime(
         dsar.attrs["start_date"], "%Y-%m-%d %H:%M:%S.%f"
     )
