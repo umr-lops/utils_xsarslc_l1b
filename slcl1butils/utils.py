@@ -1,4 +1,5 @@
 #!/bin/env python
+import pdb
 import warnings
 import os
 import slcl1butils
@@ -6,6 +7,7 @@ import numpy as np
 import logging
 import zipfile
 import fsspec
+import xarray as xr
 import aiohttp
 from slcl1butils.get_config import get_conf
 config = get_conf()
@@ -21,7 +23,32 @@ except ImportError:
     mem_monitor = False
 
 
+def netcdf_compliant(dataset):
+    """
+    Create a dataset that can be written on disk with xr.Dataset.to_netcdf() function. It split complex variable in real and imaginary variable
 
+    Args:
+        dataset (xarray.Dataset): dataset to be transformed
+    """
+    var_to_rm = list()
+    var_to_add = list()
+    for i in dataset.variables.keys():
+        if dataset[i].dtype == complex or dataset[i].dtype=='complex64':
+            re = dataset[i].real
+            # re.encoding['_FillValue'] = 9.9692099683868690e+36
+            im = dataset[i].imag
+            # im.encoding['_FillValue'] = 9.9692099683868690e+36
+            var_to_add.append({str(i) + '_Re': re, str(i) + '_Im': im})
+            var_to_rm.append(str(i))
+    ds_to_save = xr.merge([dataset.drop_vars(var_to_rm), *var_to_add], compat='override')
+    for vv in ds_to_save.variables.keys():
+        if ds_to_save[vv].dtype == 'int64':  # to avoid ncview: netcdf_dim_value: unknown data type (10) for corner_line ...
+            ds_to_save[vv] = ds_to_save[vv].astype(np.int16)
+        elif ds_to_save[vv].dtype == 'float64':
+            ds_to_save[vv] = ds_to_save[vv].astype(np.float32) # to reduce volume of output files
+        else:
+            logging.debug('%s is dtype %s',vv,ds_to_save[vv].dtype)
+    return ds_to_save
 def url_get(url, cache_dir=os.path.join(config['data_dir'], 'fsspec_cache')):
     """
     Get fil from url, using caching.
