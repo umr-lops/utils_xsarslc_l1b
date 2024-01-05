@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from glob import glob
 import numpy as np
 import xarray as xr
+import zarr
 from datatree import DataTree
 import time
 import logging
@@ -19,9 +20,12 @@ from slcl1butils.coloc.coloc import (
     raster_cropping_in_polygon_bounding_box,
     coloc_tiles_from_l1bgroup_with_raster,
 )
+from slcl1butils.coloc.coloc_IW_WW3spectra import (
+    resampleWW3spectra_on_TOPS_SAR_cartesian_grid,
+)
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
 from slcl1butils.get_config import get_conf
-from slcl1butils.utils import get_memory_usage
+from slcl1butils.utils import get_memory_usage,netcdf_compliant
 from collections import defaultdict
 from tqdm import tqdm
 import warnings
@@ -37,6 +41,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
     colocat=True,
     time_separation="2tau",
     overwrite=False,
+    output_format="nc",
     dev=False,
 ):
     """
@@ -96,7 +101,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
         pbar.set_description("")
         l1b_fullpath = files[ii]
         l1c_full_path = get_l1c_filepath(
-            l1b_fullpath, version=version, outputdir=outputdir
+            l1b_fullpath, version=version, outputdir=outputdir, format=output_format
         )
         if os.path.exists(l1c_full_path) and overwrite is False:
             logging.debug("%s already exists", l1c_full_path)
@@ -113,8 +118,15 @@ def do_L1C_SAFE_from_L1B_SAFE(
                     cpt[anc + " ancillary_field_added"] += 1
                 else:
                     cpt[anc + " missing"] += 1
-            if "xspectra_Re" in ds_inter:
-                save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version=version)
+            if "xspectra_Re" in ds_inter or "xsSAR" in ds_inter or 'xspectra' in ds_inter:
+                ds_intra = netcdf_compliant(ds_intra)
+                ds_inter = netcdf_compliant(ds_inter)
+                if output_format == "nc":
+                    save_l1c_to_netcdf(
+                        l1c_full_path, ds_intra, ds_inter, version=version
+                    )
+                elif output_format == "zarr":
+                    save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version=version)
                 cpt["saved_in_nc"] += 1
             else:
                 logging.debug(
@@ -172,6 +184,19 @@ def enrich_onesubswath_l1b(
                 ancillary, ds_intra, ds_inter
             )
             flag_ancillaries[ancillary["name"]] = ancillary_fields_added
+
+    (
+        ds_intra,
+        flag_ww3spectra_added,
+        flag_ww3spectra_found,
+    ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_intra, xspeckind="intra")
+    flag_ancillaries["ww3spectra_intra"] = flag_ww3spectra_added
+    (
+        ds_inter,
+        flag_ww3spectra_added,
+        flag_ww3spectra_found,
+    ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_inter, xspeckind="inter")
+    flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
     return ds_intra, ds_inter, flag_ancillaries
 
 
@@ -212,9 +237,9 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     elif ancillary["name"] == "ww3_global_yearly_3h":
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
     elif ancillary["name"] == "ww3hindcast_field":
-        raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0],closest_date)
+        raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
     else:
-        raise ValueError('%s ancillary name not handled'%ancillary_ds["name"])
+        raise ValueError("%s ancillary name not handled" % ancillary["name"])
     # Get the polygons of the swath data
     polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
         ds_intra, swath_only=True
@@ -253,7 +278,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     return ds_intra, ds_inter, ancillary_fields_added
 
 
-def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
+def get_l1c_filepath(l1b_fullpath, version, format="nc", outputdir=None, makedir=True):
     """
 
     Args:
@@ -282,7 +307,10 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
         pathout, os.path.basename(l1b_fullpath).replace("L1B", "L1C")
     )
     lastpiece = l1c_full_path.split("_")[-1]
-    l1c_full_path = l1c_full_path.replace(lastpiece, version + ".nc")
+    if format == "nc":
+        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".nc")
+    elif format == "zarr":
+        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".zarr")
     logging.debug("File out: %s ", l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
@@ -303,7 +331,7 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version):
     """
     #
     # Arranging & saving Results
-    #  Building the output datatree
+    # Building the output datatree
     dt = DataTree()
     burst_type = "intra"
     dt[burst_type + "burst"] = DataTree(data=ds_intra)
@@ -314,24 +342,34 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version):
     dt.attrs["product_version"] = version
     dt.attrs["processor"] = __file__
     dt.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
-    #
     # Saving the results in netCDF
     dt.to_netcdf(l1c_full_path)
 
 
-def get_memory_usage():
-    try:
-        import resource
+def save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version):
+    """
+    zarr if not a good idea -> more than 1400 inodes generated on file system for single measurement
+    Args:
+        l1c_full_path:
+        ds_intra:
+        ds_inter:
+        version:
 
-        memory_used_go = (
-            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0 / 1000.0
-        )
-    except:  # on windows resource is not usable
-        import psutil
+    Returns:
 
-        memory_used_go = psutil.virtual_memory().used / 1000 / 1000 / 1000.0
-    str_mem = "RAM usage: %1.1f Go" % memory_used_go
-    return str_mem
+    """
+    dt = DataTree()
+    burst_type = "intra"
+    dt[burst_type + "burst"] = DataTree(data=ds_intra)
+    burst_type = "inter"
+    dt[burst_type + "burst"] = DataTree(data=ds_inter)
+
+    dt.attrs["version_slcl1butils"] = slcl1butils.__version__
+    dt.attrs["product_version"] = version
+    dt.attrs["processor"] = __file__
+    dt.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
+    # Saving the results in netCDF
+    dt.to_zarr(l1c_full_path)
 
 
 def main():
@@ -387,6 +425,7 @@ def main():
         time_separation="2tau",
         overwrite=args.overwrite,
         dev=args.dev,
+        output_format="nc",
     )
     logging.info("last tiff available for this SAFE: %s", final_L1C_path)
     logging.info("successful SAFE processing")
