@@ -31,7 +31,8 @@ if __name__ == '__main__':
     logging.info('outputdir : %s', args.outputdir)
     #listing = '/home1/scratch/agrouaze/listing_wv_l1b_1.4b_nc.txt'
     #listing = '/home/datawork-cersat-public/project/sarwave/data/listings/wv_safe_L1B_L1C.txt'
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/wv_safe_L1B2.0_L1C.txt'
+    #listing = '/home/datawork-cersat-public/project/sarwave/data/listings/wv_safe_L1B2.0_L1C.txt'
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/wv_safe_L1B2.4_L1C.txt'
     # listing = '/home1/scratch/agrouaze/very_small_listing_wv_for_test_extract_from_L1B2.0.txt' # when you want to test the prun
     # modify initial listing with 2 more args
     listing2 = listing + '.modified'
