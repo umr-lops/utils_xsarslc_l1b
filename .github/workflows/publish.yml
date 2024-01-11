@@ -39,7 +39,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/utils_xsarslc_l1b
+      url: https://pypi.org/p/slcl1butils
     permissions:
       id-token: write
 
