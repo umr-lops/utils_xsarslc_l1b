@@ -25,6 +25,9 @@ dependencies = [
     'matplotlib-base',
     'scipy',
     'aiohttp',
+    'holoviews',
+    'geoviews',
+    'dask'
 ]
 dynamic = ["version"]
 
