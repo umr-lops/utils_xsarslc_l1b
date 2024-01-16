@@ -482,6 +482,7 @@ def preprrocess(
                 + 1j * dsu["xspectra_%stau_Im" % tautau]
             )
             dsu = dsu.drop(["xspectra_%stau_Re" % tautau, "xspectra_%stau_Im" % tautau])
+    dsu = dsu.drop('line')
     return dsu
 
 
@@ -606,13 +607,18 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
                     tmpds = tmpds.drop(
                         [vv for vv in tmpds if "xspectra" in vv] + ["sample"]
                     ).drop_dims(["freq_line", "freq_sample"])
+                    tmpds.drop_vars(['corner_longitude','corner_latitude'])
+                    tmpds = tmpds.drop_dims(['c_sample','c_line'])
+                    tmpds = tmpds.drop('line')
                     tmpds = tmpds.assign_coords({"nc_number": cpt_nc})
                     tmpds = tmpds.assign_coords({"sardate": tmpdate})
                     # tmpds = tmpds.expand_dims('nc_number')
                 cpt_nc += 1
                 tmp.append(tmpds.expand_dims("sardate"))
         logging.info("nb dataset to combine: %s", cpt_nc)
-        ds = xr.concat(tmp, dim="sardate")
+
+        # ds = xr.concat(tmp, dim="sardate",coords='minimal') # ne fonctionne pas -> conflict in coords
+        ds = xr.combine_by_coords(tmp,combine_attrs="drop_conflicts")
         # la ligne du dessous marche mais cest long je tente autre chsoe
         # ds = xr.combine_by_coords(
         #     [tt.expand_dims("sardate") for tt in tmp],  # .expand_dims('wvmode')
