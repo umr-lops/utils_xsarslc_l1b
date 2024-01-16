@@ -22,7 +22,7 @@ dependencies = [
     'tqdm',
     "zarr",
     'fsspec',
-    'matplotlib-base',
+    'matplotlib',
     'scipy',
     'aiohttp',
     'holoviews',
