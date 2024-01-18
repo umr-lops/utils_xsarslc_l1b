@@ -648,6 +648,28 @@ def save_to_zarr(stacked_ds, outputfile, L1C_version, L1B_version):
     logging.info("start saving to disk")
     stacked_ds.to_zarr(outputfile, mode="w")
     logging.info("successfully wrote stacked L1C %s", outputfile)
+    return outputfile
+def save_to_netcdf(stacked_ds, outputfile, L1C_version, L1B_version):
+    """
+
+    Args:
+        stacked_ds: xr.Dataset
+        outputfile: str
+        L1C_version: str
+        L1B_version: str
+
+    Returns:
+
+    """
+    if not os.path.dirname(outputfile):
+        os.makedirs(os.path.dirname(outputfile), 0o0775)
+    stacked_ds.attrs["L1C_version"] = L1C_version
+    stacked_ds.attrs["L1B_version"] = L1B_version
+    stacked_ds.attrs["creation_script"] = os.path.basename(__file__)
+    logging.info("start saving to disk")
+    stacked_ds.to_netcdf(outputfile, mode="w")
+    logging.info("successfully wrote stacked L1C %s", outputfile)
+    return outputfile
 
 
 def main():
@@ -685,6 +707,7 @@ def main():
         required=True,
         help="directory where L1C stacked files will be stored",
     )
+    parser.add_argument('--finalarchive',help='the files are produce in args.outputdir and then moved in args.finalarchive (using mv)',required=False)
     parser.add_argument(
         "--dev",
         action="store_true",
@@ -716,8 +739,11 @@ def main():
     startdate = datetime.datetime.strptime(args.month, "%Y%m").replace(day=1)
     stopdate = startdate + relativedelta.relativedelta(months=1)
     logging.info("startdate %s -> %s stopdate", startdate, stopdate)
+    # outputfile = os.path.join(
+    #     args.outputdir, args.sar + "_WV_L1C_monthly_%s_%s.zarr" % (args.month, args.pol)
+    # )
     outputfile = os.path.join(
-        args.outputdir, args.sar + "_WV_L1C_monthly_%s_%s.zarr" % (args.month, args.pol)
+        args.outputdir, args.sar + "_WV_L1C_monthly_%s_%s.nc" % (args.month, args.pol)
     )
     if os.path.exists(outputfile) and args.overwrite is False:
         logging.info("%s already exists", outputfile)
@@ -734,14 +760,20 @@ def main():
             list_SAFEs=lst_safes_month, dev=args.dev, keep_xspectrum=args.keepxspec
         )
         if stackds:
-            save_to_zarr(
-                stacked_ds=stackds,
+            # save_to_zarr(
+            #     stacked_ds=stackds,
+            #     outputfile=outputfile,
+            #     L1C_version=vL1C,
+            #     L1B_version=vL1B,
+            # )
+            outputfile = save_to_netcdf(stacked_ds=stackds,
                 outputfile=outputfile,
                 L1C_version=vL1C,
-                L1B_version=vL1B,
-            )
+                L1B_version=vL1B)
         else:
             logging.info("no data available")
+    if os.path.exists(outputfile):
+
     logging.info("peak memory usage: %s Mbytes", get_memory_usage())
     logging.info("done in %1.3f min", (time.time() - t0) / 60.0)
 
