@@ -8,6 +8,7 @@ import pdb
 import xarray as xr
 import glob
 import logging
+import shutil
 import numpy as np
 import os
 import datetime
@@ -773,6 +774,10 @@ def main():
         else:
             logging.info("no data available")
     if os.path.exists(outputfile):
+        archive_path = outputfile.replace(args.outputdir,args.finalarchive)
+        if outputfile!=archive_path:
+            logging.info('move file %s to %s',outputfile,archive_path)
+            shutil.move(outputfile,archive_path)
 
     logging.info("peak memory usage: %s Mbytes", get_memory_usage())
     logging.info("done in %1.3f min", (time.time() - t0) / 60.0)
