@@ -64,7 +64,8 @@ if __name__ == "__main__":
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/case-studies/TC_SURIGAE_2021_IW_XSP_SAFE_L1B_v1.txt'
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/case-studies/IW_SLC_Ciaran2023_SAFE_L1B.txt'
     # listing = "/home/datawork-cersat-public/project/sarwave/data/listings/iw_slc_medium_listing_L1B_run3.7_outputs.txt"  # 8960 SAFE
-    listing = "/home/datawork-cersat-public/project/sarwave/data/listings/iw_slc_medium_listing_L1B_run3.7_outputs_v2.txt"  # 9012 SAFE
+    # listing = "/home/datawork-cersat-public/project/sarwave/data/listings/iw_slc_medium_listing_L1B_run3.7_outputs_v2.txt"  # 9012 SAFE
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/IW_XSP_L1B_3.7.6_safe_fp.txt' # 20 SAFE
     logging.info("outputdir : %s", args.outputdir)
     # modify initial listing with more args
     listing2 = listing + ".modified"
