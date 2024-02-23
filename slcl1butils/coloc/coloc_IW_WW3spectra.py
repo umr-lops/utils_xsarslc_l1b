@@ -135,7 +135,7 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
         else:
             raise ValueError("%s" % xspeckind)
     else:
-        logging.info('there is no xspectra in this subswath')
+        logging.info('there is no xspectra in subswath %s',dsar.attrs['short_name'].split(':')[2])
     return dsar, flag_ww3spectra_added, flag_ww3spectra_found
 
 
