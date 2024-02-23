@@ -4,6 +4,7 @@ import warnings
 import os
 import slcl1butils
 import numpy as np
+import copy
 import logging
 import zipfile
 import fsspec
@@ -144,3 +145,47 @@ def xndindex(sizes):
 
     for d, k in zip(repeat(tuple(sizes.keys())), zip(np.ndindex(tuple(sizes.values())))):
         yield {k: l for k, l in zip(d, k[0])}
+
+def get_l1c_filepath(l1b_fullpath, version, format="nc", outputdir=None, makedir=True):
+    """
+
+    Args:
+        l1b_fullpath: str .nc l1b full path
+        version : str (eg. 1.2 or B01)
+        outputdir: str [optional] default is l1c subdirectory // l1b inputs
+        makedir: bool [optional] default is True
+    Returns:
+        l1c_full_path: str
+    """
+    safe_file = os.path.basename(os.path.dirname(l1b_fullpath))
+    if outputdir is None:
+        run_directory = os.path.dirname(os.path.dirname(l1b_fullpath))
+        # Output file directory
+        pathout_root = run_directory.replace("l1b", "l1c")
+    else:
+        pathout_root = outputdir
+    pathout = os.path.join(pathout_root, version, safe_file)
+
+    # Output filename
+    l1c_full_path = os.path.join(
+        pathout, os.path.basename(l1b_fullpath).replace("L1B", "L1C")
+    )
+    # add the product ID in the SAFE  name
+    basesafe = os.path.basename(os.path.dirname(l1c_full_path))
+    basesafe0 = copy.copy(basesafe)
+    if len(basesafe.split("_")) == 10:  # classical ESA SLC naming #:TODO once xsarslc will be updated this case could be removed
+        basesafe = basesafe.replace(".SAFE", "_" + version.upper() + ".SAFE")
+    else:  # there is already a product ID in the L1B SAFE name
+        lastpart = basesafe.split('_')[-1]
+        basesafe = basesafe.replace(lastpart,version.upper()+'.SAFE')
+    l1c_full_path = l1c_full_path.replace(basesafe0, basesafe)
+
+    lastpiece = l1c_full_path.split("_")[-1]
+    if format == "nc":
+        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".nc")
+    elif format == "zarr":
+        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".zarr")
+    logging.debug("File out: %s ", l1c_full_path)
+    if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
+        os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
+    return l1c_full_path
