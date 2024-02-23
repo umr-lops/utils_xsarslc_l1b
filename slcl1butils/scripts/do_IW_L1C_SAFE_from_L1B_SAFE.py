@@ -125,20 +125,36 @@ def do_L1C_SAFE_from_L1B_SAFE(
                 or "xsSAR" in ds_inter
                 or "xspectra" in ds_inter
             ):
-                ds_intra = netcdf_compliant(ds_intra)
-                ds_inter = netcdf_compliant(ds_inter)
-                if output_format == "nc":
-                    save_l1c_to_netcdf(
-                        l1c_full_path, ds_intra, ds_inter, version=version
-                    )
-                elif output_format == "zarr":
-                    save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version=version)
-                cpt["saved_in_nc"] += 1
+                pass # nothing to do
             else:
                 logging.debug(
-                    "there is no xspectra in this subswath -> the L1C will not be saved"
+                    "there is no xspectra in this subswath -> creation of empty xspectra variables"
                 )
                 cpt["L1B_without_spectra"] += 1
+                freq_sample = 453
+                freq_line = 50
+                # list of variables that would currently miss {'bt_thresh', 'azimuth_cutoff_error', 'nesz_filt', 'macs_Im', 'bright_targets_histogram', 'lambda_range_max_macs', 'normalized_variance_filt', 'macs_Re', 'cwave_params', 'tau', 'k_rg', 'azimuth_cutoff', 'sigma0_filt', 'phi_hf', 'doppler_centroid', 'k_az', 'k_gp'}
+                #k_rg(burst, tile_sample, freq_sample)
+                #k_az(freq_line)
+                empty_xsp = np.nan*np.ones((ds_intra.burst.size,
+                                                                    ds_intra.tile_line.size,
+                                                                    ds_intra.tile_sample.size,
+                                                                    freq_line,freq_sample,1))
+                ds_intra['xspectra_2tau_Re'] = xr.DataArray(empty_xsp,dims=['burst', 'tile_line',
+                                                                    'tile_sample', 'freq_line', 'freq_sample', '2tau'])
+                ds_intra['xspectra_2tau_Im'] = ds_intra['xspectra_2tau_Re']
+
+                 # xspectra_2tau_Re(burst, tile_line, tile_sample, freq_line, freq_sample, \2tau)
+            ds_intra = netcdf_compliant(ds_intra)
+            ds_inter = netcdf_compliant(ds_inter)
+            if output_format == "nc":
+                save_l1c_to_netcdf(
+                        l1c_full_path, ds_intra, ds_inter, version=version
+                    )
+                cpt['saved_in_nc'] += 1
+            elif output_format == "zarr":
+                save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version=version)
+                cpt["saved_in_zarr"] += 1
     logging.info("cpt: %s", cpt)
     return l1c_full_path
 
