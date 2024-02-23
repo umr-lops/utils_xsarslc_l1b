@@ -1,4 +1,5 @@
 import argparse
+import copy
 import pdb
 
 import slcl1butils
@@ -6,6 +7,7 @@ from slcl1butils.raster_readers import ecmwf_0100_1h
 from slcl1butils.raster_readers import ww3_global_yearly_3h
 from slcl1butils.raster_readers import resource_strftime
 from slcl1butils.raster_readers import ww3_IWL1Btrack_hindcasts_30min
+from slcl1butils.utils import get_l1c_filepath
 from datetime import datetime, timedelta
 from glob import glob
 import numpy as np
@@ -25,7 +27,7 @@ from slcl1butils.coloc.coloc_IW_WW3spectra import (
 )
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
 from slcl1butils.get_config import get_conf
-from slcl1butils.utils import get_memory_usage,netcdf_compliant
+from slcl1butils.utils import get_memory_usage, netcdf_compliant
 from collections import defaultdict
 from tqdm import tqdm
 import warnings
@@ -118,7 +120,11 @@ def do_L1C_SAFE_from_L1B_SAFE(
                     cpt[anc + " ancillary_field_added"] += 1
                 else:
                     cpt[anc + " missing"] += 1
-            if "xspectra_Re" in ds_inter or "xsSAR" in ds_inter or 'xspectra' in ds_inter:
+            if (
+                "xspectra_Re" in ds_inter
+                or "xsSAR" in ds_inter
+                or "xspectra" in ds_inter
+            ):
                 ds_intra = netcdf_compliant(ds_intra)
                 ds_inter = netcdf_compliant(ds_inter)
                 if output_format == "nc":
@@ -276,45 +282,6 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             ds_inter = xr.merge([ds_inter, _ds_inter])
     logging.debug("ancillary fields added")
     return ds_intra, ds_inter, ancillary_fields_added
-
-
-def get_l1c_filepath(l1b_fullpath, version, format="nc", outputdir=None, makedir=True):
-    """
-
-    Args:
-        l1b_fullpath: str .nc l1b full path
-        version : str (eg. 1.2)
-        outputdir: str [optional] default is l1c subdirectory // l1b inputs
-
-    Returns:
-
-    """
-    safe_file = os.path.basename(os.path.dirname(l1b_fullpath))
-    if outputdir is None:
-        run_directory = os.path.dirname(os.path.dirname(l1b_fullpath))
-        # Output file directory
-        pathout_root = run_directory.replace("l1b", "l1c")
-    else:
-        pathout_root = outputdir
-    # print(~os.path.isdir(pathout_root))
-    # if (os.path.isdir(pathout_root) == False):
-    #     #os.system('mkdir ' + pathout_root)
-    #     os.makedirs(pathout_root,0o0775)
-    pathout = os.path.join(pathout_root, version, safe_file)
-
-    # Output filename
-    l1c_full_path = os.path.join(
-        pathout, os.path.basename(l1b_fullpath).replace("L1B", "L1C")
-    )
-    lastpiece = l1c_full_path.split("_")[-1]
-    if format == "nc":
-        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".nc")
-    elif format == "zarr":
-        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".zarr")
-    logging.debug("File out: %s ", l1c_full_path)
-    if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
-        os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
-    return l1c_full_path
 
 
 def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version):
