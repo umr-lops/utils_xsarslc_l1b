@@ -39,7 +39,6 @@ def add_missing_variables(ds_intra,ds_inter)->(xr.Dataset,xr.Dataset):
                 else:
                     coords[co] = 1
             dims = [co for co in coords.keys()]
-            pdb.set_trace()
             ds_intra = ds_intra.assign({vv:xr.DataArray(coords=coords,dims=dims,attrs=attrs)})
             logging.info('empty %s added to intra',vv)
     for vv in conf['list_variables_expected_inter']:
@@ -47,14 +46,19 @@ def add_missing_variables(ds_intra,ds_inter)->(xr.Dataset,xr.Dataset):
             attrs = conf['list_variables_expected_intra'][vv]['attrs']
             dims_name = conf['list_variables_expected_intra'][vv]['dims']
             coords_name = conf['list_variables_expected_intra'][vv]['coords']
-            dims = {}
-            for di in dims_name:
-                if di in ds_inter.dims:
-                    dims[di] = ds_inter.dims[di]
+            # dims = {}
+            # for di in dims_name:
+            #     if di in ds_inter.dims:
+            #         dims[di] = ds_inter.dims[di]
             coords = {}
             for co in coords_name:
                 if co in ds_inter.coords:
                     coords[co] = ds_inter.coords[co]
+                elif co in ds_inter.dims:
+                    coords[co] = np.arange(ds_inter.dims[co])
+                else:
+                    coords[co] = 1
+            dims = [co for co in coords.keys()]
             ds_inter = ds_inter.assign({vv:xr.DataArray(coords=coords,dims=dims,attrs=attrs)})
             logging.info('empty %s added to intra',vv)
     return ds_intra,ds_inter
