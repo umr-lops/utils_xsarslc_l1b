@@ -47,9 +47,24 @@ def doQuadMeshL1BorL1C_onefile(
     else:
         if lst_vars:
             clim = lst_vars[variable][1]
-            fig = qmeshes.opts(width=1200, height=900, colorbar=True, cmap=cmap,clipping_colors=clipping,tools=['hover'],clim=clim) #
+            fig = qmeshes.opts(
+                width=1200,
+                height=900,
+                colorbar=True,
+                cmap=cmap,
+                clipping_colors=clipping,
+                tools=["hover"],
+                clim=clim,
+            )  #
         else:
-            fig = qmeshes.opts(width=1200, height=900, colorbar=True, cmap=cmap,clipping_colors=clipping,tools=['hover']) #
+            fig = qmeshes.opts(
+                width=1200,
+                height=900,
+                colorbar=True,
+                cmap=cmap,
+                clipping_colors=clipping,
+                tools=["hover"],
+            )  #
 
     return fig
 
@@ -85,22 +100,30 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
     ds = open_of_use(ff, bursttype)
     # ds.load()
     # ds = datatree.open_datatree(ff)[bursttype].to_dataset() # it doesnt change anything to segmentation fault...
+    if "burst" in ds[variable].coords:
+        stackable_coords = ["burst", "tile_line"]
+    else:
+        stackable_coords = ["tile_line"]
     if variable in ["cwave_params"]:
         sub = (
             ds[variable]
             .isel(
                 {"2tau": 0, "k_gp": kwargs.get("k_gp"), "phi_hf": kwargs.get("phi_hf")}
             )
-            .stack({"y": ["burst", "tile_line"]})
+            .stack({"y": stackable_coords})
         )
     elif variable in ["macs_Im", "macs_Re"]:
+
         sub = (
             ds[variable]
             .isel({"lambda_range_max_macs": kwargs.get("lambda_range_max_macs")})
-            .stack({"y": ["burst", "tile_line"]})
+            .stack({"y": stackable_coords})
         )
     else:
-        sub = ds[variable].stack({"y": ["burst", "tile_line"]})
+        if "burst" in ds[variable].coords:
+            sub = ds[variable].stack({"y": ["burst", "tile_line"]})
+        else:
+            sub = ds[variable].stack({"y": ["tile_line"]})
     if np.isnan(sub).any():
         logging.debug(
             "there are %s NaN in the variable stacked : %s",
@@ -108,6 +131,7 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
             variable,
         )
     sub = sub.rename({"tile_sample": "x"})
+    sub = sub.drop_vars(['y', 'tile_line'])
     sub = sub.assign_coords({"y": np.arange(sub.y.size)})
     sub = sub.assign_coords({"x": np.arange(sub.x.size)})
     if (sub == 0).any() and variable == "sigma0":
