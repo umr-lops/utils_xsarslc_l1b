@@ -13,8 +13,11 @@ def get_conf():
     local_config_pontential_path = os.path.join(os.path.dirname(slcl1butils.__file__), 'localconfig.yaml')
 
     if os.path.exists(local_config_pontential_path):
+        logging.info('local config used')
+        print('local config')
         config_path = local_config_pontential_path
     else:
+        logging.info('default config used')
         config_path = os.path.join(os.path.dirname(slcl1butils.__file__), 'config.yaml')
     logging.debug('config path: %s',config_path)
     stream = open(config_path, 'r')
