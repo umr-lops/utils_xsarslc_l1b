@@ -267,6 +267,9 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
     elif ancillary["name"] == "ww3hindcast_field":
         raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
+    elif ancillary["name"] == "ww3hindcast_spectra":
+        pass #nothing to do here, there is a specific method called later in the code.
+        return ds_intra, ds_inter, ancillary_fields_added
     else:
         raise ValueError("%s ancillary name not handled" % ancillary["name"])
     # Get the polygons of the swath data
