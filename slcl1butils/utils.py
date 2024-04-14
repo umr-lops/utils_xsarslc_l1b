@@ -204,11 +204,26 @@ def get_l1c_filepath(l1b_fullpath, version, format="nc", outputdir=None, makedir
         basesafe = basesafe.replace(lastpart, version.upper() + ".SAFE")
     l1c_full_path = l1c_full_path.replace(basesafe0, basesafe)
 
-    lastpiece = l1c_full_path.split("_")[-1]
+    #suffix measurement
+    measu_base = os.path.basename(l1c_full_path)
+    if 's1' in measu_base[0:2]:
+        measu_base = 'l1c-'+measu_base
+    elif 'l1b' in measu_base[0:3]:
+        measu_base = measu_base.replace('l1b','l1c')
+    measu_base = measu_base.replace('slc','xsp') #security old products
+    measu_base = measu_base.replace('L1C_xspec_IFR_','') # security
+    l1c_full_path = l1c_full_path.replace(os.path.basename(l1c_full_path),measu_base)
+
+    # lastpiece = l1c_full_path.split("_")[-1]
+    if '_' in os.path.basename(l1c_full_path):
+        lastpiece = '_'+l1c_full_path.split("_")[-1]
+    elif '-' in os.path.basename(l1c_full_path):
+        # lastpiece = l1c_full_path[-6:]
+        lastpiece = '-'+l1c_full_path.split("-")[-1]
     if format == "nc":
-        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".nc")
+        l1c_full_path = l1c_full_path.replace(lastpiece, '-'+version.lower() + ".nc")
     elif format == "zarr":
-        l1c_full_path = l1c_full_path.replace(lastpiece, version + ".zarr")
+        l1c_full_path = l1c_full_path.replace(lastpiece, version.lower() + ".zarr")
     logging.debug("File out: %s ", l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)

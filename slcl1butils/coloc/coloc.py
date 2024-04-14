@@ -151,10 +151,12 @@ def do_coloc_L1B_with_raster_SAFE(full_safe_file, ancillary_list, skip=True):
             # Getting the raster from anxillary data
             if (ancillary['name'] == 'ecmwf_0100_1h'):
                 raster_ds = ecmwf_0100_1h(filename)
-            if (ancillary['name'] == 'ww3_global_yearly_3h'):
+            elif (ancillary['name'] == 'ww3_global_yearly_3h'):
                 raster_ds = ww3_global_yearly_3h(filename, closest_date)
-            if (ancillary['name']) == 'ww3hindcast_field':
+            elif (ancillary['name']) == 'ww3hindcast_field':
                 raster_ds == ww3_IWL1Btrack_hindcasts_30min(filename,closest_date)
+            else:
+                raise ValueError('%s not a correct dataset name'%ancillary['name'])
 
             # Get the polygons of the swath data
             polygons = get_swath_tiles_polygons_from_l1bgroup(l1b_ds, swath_only=True)

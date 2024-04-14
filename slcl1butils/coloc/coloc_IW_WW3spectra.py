@@ -33,7 +33,8 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
     gridsar = {
         d: k
         for d, k in dsar.sizes.items()
-        if d in ["burst", "tile_sample", "tile_line"]
+        #if d in ["burst", "tile_sample", "tile_line"]
+        if d in [ "tile_sample", "tile_line"]
     }
     if (xspeckind == "intra" and "xspectra_2tau_Re" in dsar) or (xspeckind == "inter" and "xspectra_Re" in dsar): # in a future version of L1B xspectra variable could be always present (even on land) but filled by NaN
         # symmetrize and combine Re+1j*Im for all the xspectra SAR
@@ -112,11 +113,11 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
                         {"kx": "k_rg", "ky": "k_az"}
                     ).T
                     rawspww3 = rawspww3.assign_coords(i)
-                    rawspww3 = rawspww3.expand_dims(["burst", "tile_line", "tile_sample"])
+                    rawspww3 = rawspww3.expand_dims(["tile_line", "tile_sample"])
+                    #rawspww3 = rawspww3.expand_dims(["burst", "tile_line", "tile_sample"])
                     ds_ww3_cartesian = ds_ww3_cartesian.assign_coords(i)
-                    ds_ww3_cartesian = ds_ww3_cartesian.expand_dims(
-                        ["burst", "tile_line", "tile_sample"]
-                    )
+                    ds_ww3_cartesian = ds_ww3_cartesian.expand_dims(["tile_line", "tile_sample"])
+                    #ds_ww3_cartesian = ds_ww3_cartesian.expand_dims(["burst", "tile_line", "tile_sample"])
                     list_ww3_cart_sp.append(ds_ww3_cartesian)
                     list_ww3_efth_sp.append(rawspww3)
                 ds_ww3_cartesian_merged = xr.merge(list_ww3_cart_sp)

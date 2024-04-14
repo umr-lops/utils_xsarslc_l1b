@@ -8,11 +8,11 @@ from slcl1butils.raster_readers import ww3_global_yearly_3h
 from slcl1butils.raster_readers import resource_strftime
 from slcl1butils.raster_readers import ww3_IWL1Btrack_hindcasts_30min
 from slcl1butils.utils import get_l1c_filepath
+from slcl1butils.compute.homogeneous_output import add_missing_variables
 from datetime import datetime, timedelta
 from glob import glob
 import numpy as np
 import xarray as xr
-import zarr
 from datatree import DataTree
 import time
 import logging
@@ -40,6 +40,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
     full_safe_file,
     version,
     outputdir,
+    ancillary_list,
     colocat=True,
     time_separation="2tau",
     overwrite=False,
@@ -52,6 +53,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
         full_safe_file: str (e.g. /path/to/l1b-ifremer-dataset/..SAFE)
         version: str version of the product to generate
         outputdir: str where to store l1c netcdf files
+        ancillary_list: dict of dict with names of the dataset (defined in conf.yaml or localconfig.yaml) to be colocated
         colocat: bool
         time_separation: str (e.g. '2tau')
         overwrite: bool True -> overwrite existing l1c if it exists
@@ -62,23 +64,23 @@ def do_L1C_SAFE_from_L1B_SAFE(
     """
     l1c_full_path = None
     # Ancillary data to be colocated
-    ancillary_ecmwf = {}
-    ancillary_ecmwf["resource"] = conf["ecmwf0.1_pattern"]
-    ancillary_ecmwf["step"] = 1
-    ancillary_ecmwf["name"] = "ecmwf_0100_1h"
+    # ancillary_ecmwf = {}
+    # ancillary_ecmwf["resource"] = conf["ecmwf0.1_pattern"]
+    # ancillary_ecmwf["step"] = 1
+    # ancillary_ecmwf["name"] = "ecmwf_0100_1h"
 
     # ancillary_ww3 = {}
     # ancillary_ww3["resource"] = conf["ww3_pattern"]
     # ancillary_ww3["step"] = 3
     # ancillary_ww3["name"] = "ww3_global_yearly_3h"
 
-    ancillary_ww3hindcast_field = {}
-    ancillary_ww3hindcast_field["resource"] = conf["ww3hindcast_field_pattern"]
-    ancillary_ww3hindcast_field["step"] = 3
-    ancillary_ww3hindcast_field["name"] = "ww3hindcast_field"
+    # ancillary_ww3hindcast_field = {}
+    # ancillary_ww3hindcast_field["resource"] = conf["ww3hindcast_field_pattern"]
+    # ancillary_ww3hindcast_field["step"] = 3
+    # ancillary_ww3hindcast_field["name"] = "ww3hindcast_field"
 
     # ancillary_list = [ancillary_ecmwf]#,ancillary_ww3]
-    ancillary_list = [ancillary_ecmwf, ancillary_ww3hindcast_field]
+    # ancillary_list = [ancillary_ecmwf, ancillary_ww3hindcast_field]
     logging.info("ancillary data: %s", ancillary_list)
 
     #
@@ -116,30 +118,50 @@ def do_L1C_SAFE_from_L1B_SAFE(
                 colocat=colocat,
                 time_separation=time_separation,
             )
+            ds_intra, ds_inter = add_missing_variables(ds_intra, ds_inter)
             for anc in flag_ancillaries_added:
                 if flag_ancillaries_added[anc]:
                     cpt[anc + " ancillary_field_added"] += 1
                 else:
                     cpt[anc + " missing"] += 1
-            if (
-                "xspectra_Re" in ds_inter
-                or "xsSAR" in ds_inter
-                or "xspectra" in ds_inter
-            ):
-                ds_intra = netcdf_compliant(ds_intra)
-                ds_inter = netcdf_compliant(ds_inter)
-                if output_format == "nc":
-                    save_l1c_to_netcdf(
+            # if (
+            #     "xspectra_Re" in ds_inter
+            #     or "xsSAR" in ds_inter
+            #     or "xspectra" in ds_inter
+            # ):
+            #     pass # nothing to do
+            # else:
+            #     logging.debug(
+            #         "there is no xspectra in this subswath -> creation of empty xspectra variables"
+            #     )
+            #     cpt["L1B_without_spectra"] += 1
+            #     freq_sample = 453
+            #     freq_line = 50
+            #     # list of variables that would currently miss {'bt_thresh', 'azimuth_cutoff_error', 'nesz_filt',
+            #     'macs_Im', 'bright_targets_histogram', 'lambda_range_max_macs', 'normalized_variance_filt', 'macs_Re',
+            #     'cwave_params', 'tau', 'k_rg', 'azimuth_cutoff', 'sigma0_filt', 'phi_hf', 'doppler_centroid', 'k_az',
+            #     'k_gp'}
+            #     #k_rg(burst, tile_sample, freq_sample)
+            #     #k_az(freq_line)
+            #     empty_xsp = np.nan*np.ones((ds_intra.burst.size,
+            #                                                         ds_intra.tile_line.size,
+            #                                                         ds_intra.tile_sample.size,
+            #                                                         freq_line,freq_sample,1))
+            #     ds_intra['xspectra_2tau_Re'] = xr.DataArray(empty_xsp,dims=['burst', 'tile_line',
+            #                                                         'tile_sample', 'freq_line', 'freq_sample', '2tau'])
+            #     ds_intra['xspectra_2tau_Im'] = ds_intra['xspectra_2tau_Re']
+            #
+            #      # xspectra_2tau_Re(burst, tile_line, tile_sample, freq_line, freq_sample, \2tau)
+            ds_intra = netcdf_compliant(ds_intra)
+            ds_inter = netcdf_compliant(ds_inter)
+            if output_format == "nc":
+                save_l1c_to_netcdf(
                         l1c_full_path, ds_intra, ds_inter, version=version
                     )
-                elif output_format == "zarr":
-                    save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version=version)
-                cpt["saved_in_nc"] += 1
-            else:
-                logging.debug(
-                    "there is no xspectra in this subswath -> the L1C will not be saved"
-                )
-                cpt["L1B_without_spectra"] += 1
+                cpt['saved_in_nc'] += 1
+            elif output_format == "zarr":
+                save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version=version)
+                cpt["saved_in_zarr"] += 1
     logging.info("cpt: %s", cpt)
     return l1c_full_path
 
@@ -151,7 +173,7 @@ def enrich_onesubswath_l1b(
 
     Args:
         l1b_fullpath: str one single sub-swath
-        ancillary_list: list
+        ancillary_list: dict
         colocat: cool
         time_separation: str
 
@@ -163,7 +185,7 @@ def enrich_onesubswath_l1b(
 
     logging.debug("File in: %s", l1b_fullpath)
     if ancillary_list is None:
-        ancillary_list = []
+        ancillary_list = {}
     # ====================
     # X-SPEC
     # ====================
@@ -185,25 +207,25 @@ def enrich_onesubswath_l1b(
     # ====================
     flag_ancillaries = {}
     if colocat:
-        for ancillary in ancillary_list:
-            logging.debug("ancillary: %s", ancillary)
+        for ancillary_name in ancillary_list:
+            logging.debug("ancillary: %s", ancillary_name)
             ds_intra, ds_inter, ancillary_fields_added = append_ancillary_field(
-                ancillary, ds_intra, ds_inter
+                ancillary_list[ancillary_name], ds_intra, ds_inter
             )
-            flag_ancillaries[ancillary["name"]] = ancillary_fields_added
-
-    (
-        ds_intra,
-        flag_ww3spectra_added,
-        flag_ww3spectra_found,
-    ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_intra, xspeckind="intra")
-    flag_ancillaries["ww3spectra_intra"] = flag_ww3spectra_added
-    (
-        ds_inter,
-        flag_ww3spectra_added,
-        flag_ww3spectra_found,
-    ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_inter, xspeckind="inter")
-    flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
+            flag_ancillaries[ancillary_name] = ancillary_fields_added
+    if 'ww3hindcast_spectra' in ancillary_list:
+        (
+            ds_intra,
+            flag_ww3spectra_added,
+            flag_ww3spectra_found,
+        ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_intra, xspeckind="intra")
+        flag_ancillaries["ww3spectra_intra"] = flag_ww3spectra_added
+        (
+            ds_inter,
+            flag_ww3spectra_added,
+            flag_ww3spectra_found,
+        ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_inter, xspeckind="inter")
+        flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
     return ds_intra, ds_inter, flag_ancillaries
 
 
@@ -231,7 +253,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         str.split(ds_intra.attrs["start_date"], ".")[0], "%Y-%m-%d %H:%M:%S"
     )
     closest_date, filename = resource_strftime(
-        ancillary["resource"], step=ancillary["step"], date=sar_date
+        ancillary["pattern"], step=int(ancillary["step"]), date=sar_date
     )
     if len(glob(filename)) != 1:
         logging.debug("no ancillary files matching %s", filename)
@@ -245,6 +267,9 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
     elif ancillary["name"] == "ww3hindcast_field":
         raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
+    elif ancillary["name"] == "ww3hindcast_spectra":
+        pass #nothing to do here, there is a specific method called later in the code.
+        return ds_intra, ds_inter, ancillary_fields_added
     else:
         raise ValueError("%s ancillary name not handled" % ancillary["name"])
     # Get the polygons of the swath data
@@ -367,6 +392,12 @@ def main():
         default=conf["l1c_iw_version"],
     )
     parser.add_argument(
+        "--ww3spectra",
+        action="store_true",
+        default=False,
+        help="add WW3 spectra to L1C [default is False]",
+    )
+    parser.add_argument(
         "--dev",
         action="store_true",
         default=False,
@@ -385,17 +416,23 @@ def main():
     t0 = time.time()
     logging.info("product version to produce: %s", args.version)
     logging.info("outputdir will be: %s", args.outputdir)
+    ancillary_list = {'ecmwf_0100_1h':conf['auxilliary_dataset']['ecmwf_0100_1h'],
+                      'ww3hindcast_field':conf['auxilliary_dataset']['ww3hindcast_field']
+                      }
+    if args.ww3spectra:
+        ancillary_list['ww3hindcast_spectra'] = conf['auxilliary_dataset']['ww3hindcast_spectra']
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
         version=args.version,
         outputdir=args.outputdir,
+        ancillary_list=ancillary_list,
         colocat=True,
         time_separation="2tau",
         overwrite=args.overwrite,
         dev=args.dev,
         output_format="nc",
     )
-    logging.info("last tiff available for this SAFE: %s", final_L1C_path)
+    logging.info("last measurement generated for this SAFE: %s", final_L1C_path)
     logging.info("successful SAFE processing")
     logging.info("peak memory usage: %s ", get_memory_usage())
     logging.info("done in %1.3f min", (time.time() - t0) / 60.0)
