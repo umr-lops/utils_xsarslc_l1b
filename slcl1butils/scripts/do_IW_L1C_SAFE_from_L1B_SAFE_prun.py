@@ -6,7 +6,7 @@ import sys
 import os
 import subprocess
 import logging
-
+import numpy as np
 if __name__ == "__main__":
     root = logging.getLogger()
     if root.handlers:
@@ -16,7 +16,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="start prun")
     parser.add_argument("--verbose", action="store_true", default=False)
+    parser.add_argument("--ww3spectra", action="store_true", default=False,help='add ww3 spectra in output L1C')
     parser.add_argument("--outputdir", action="store", default=None, required=False)
+    parser.add_argument("--env", action="store", required=True,help='micromamba env (without /bin/python)')
     parser.add_argument(
         "--finalstorage",
         required=False,
@@ -31,7 +33,7 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "--version", type=str, help="version of the run e.g. 1.5", required=True
+        "--version", type=str, help="version of the run e.g. B05", required=True
     )
     args = parser.parse_args()
     if args.verbose:
@@ -65,7 +67,10 @@ if __name__ == "__main__":
     # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/case-studies/IW_SLC_Ciaran2023_SAFE_L1B.txt'
     # listing = "/home/datawork-cersat-public/project/sarwave/data/listings/iw_slc_medium_listing_L1B_run3.7_outputs.txt"  # 8960 SAFE
     # listing = "/home/datawork-cersat-public/project/sarwave/data/listings/iw_slc_medium_listing_L1B_run3.7_outputs_v2.txt"  # 9012 SAFE
-    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/IW_XSP_L1B_3.7.6_safe_fp.txt' # 20 SAFE
+    #listing = '/home/datawork-cersat-public/project/sarwave/data/listings/IW_XSP_L1B_3.7.6_safe_fp.txt' # 20 SAFE
+    # listing = '/home/datawork-cersat-public/project/sarwave/data/listings/l1b_safe_iw_a02.txt' # 6830 SAFE for now 14 april 2024
+    #listing = '/home/datawork-cersat-public/project/sarwave/data/listings/l1b_safe_iw_a06.txt' # 6277 SAFE 15 april 2024
+    listing = '/home/datawork-cersat-public/project/sarwave/data/listings/l1b_safe_iw_a02_v2.txt' # 9007 SAFE, 26 april 2024
     logging.info("outputdir : %s", args.outputdir)
     # modify initial listing with more args
     listing2 = listing + ".modified"
@@ -104,23 +109,26 @@ if __name__ == "__main__":
         if treat_it:
             if args.overwrite:
                 ll2 = (
-                    ll.replace("\n", "")
-                    + " "
+                    '--safe '+ll.replace("\n", "")
+                    + " --version "
                     + args.version
-                    + " "
+                    + " --outputdir "
                     + args.outputdir
-                    + " --overwrite\n"
+                    + " --overwrite"
                 )
             else:
                 ll2 = (
-                    ll.replace("\n", "")
-                    + " "
+                    '--safe '+ll.replace("\n", "")
+                    + " --version "
                     + args.version
-                    + " "
+                    + " --outputdir "
                     + args.outputdir
-                    + "\n"
+                    
                 )
-            fid.write(ll2)
+            if args.ww3spectra is True:
+                ll2 += ' --ww3spectra '
+            ll2 += ' --env '+args.env
+            fid.write(ll2+'\n')
     fid.close()
     logging.info("counter : already done: %s, todo: %s", cpt_already, cpt_todo)
     didi = os.path.dirname(os.path.realpath(__file__))
@@ -129,10 +137,16 @@ if __name__ == "__main__":
     taille = cpt_todo
     logging.info("Number of SAFE to treat from Level-1B to Level-1C: %s", taille)
     # call prun
-    if taille < 9999:
-        opts = " --split-max-lines=1 --background -e "
+    #if taille < 9999:
+    #    opts = " --split-max-lines=1 --background -e "
+    #else:
+    #    opts = " --split-max-lines=3 --background -e "
+    if args.ww3spectra:
+        memopt = ' --mem=2g '
     else:
-        opts = " --split-max-lines=3 --background -e "
+        memopt = ' --mem=1g '
+    opts = memopt+' --split-max-lines=%s --background -e ' % (
+        np.ceil(taille / 9900.).astype(int))  # to respect prun constraint on the number max of sublistings 10000
     cmd = prunexe + opts + pbs + " " + listing2
     logging.info("cmd to cast = %s", cmd)
     st = subprocess.check_call(cmd, shell=True)

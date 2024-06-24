@@ -411,10 +411,6 @@ def get_all_l1c_for_a_month(startdate, stopdate, sarunit, l1c_dir, polarisation=
 
 def preprrocess(
     filee,
-    indkrg_up,
-    indkrg_bo,
-    indkaz_bo,
-    indkaz_up,
     k_rg_ref,
     k_az_ref,
     typee,
@@ -425,9 +421,6 @@ def preprrocess(
     Parameters
     ----------
     filee str full path
-    indkrg int
-    indkaz_bo int
-    indkaz_up int
     k_rg_ref xr.DataArray
     k_az_ref xr.DataArray
     typee str intra or inter
@@ -468,8 +461,18 @@ def preprrocess(
             freq_sample=slice(0, indkrg_up), freq_line=slice(indkaz_bo, indkaz_up)
         )
     else:
+        ind0_rg = get_k0(dsu['k_rg'])
+        ind45_rg = get_k45m(dsu['k_rg'])
+        distk0_to_k45 = (ind45_rg-ind0_rg)
+        borninf = ind0_rg-distk0_to_k45
+
+        ind0_az = get_k0(dsu['k_az'])
+        ind45_az = get_k45m(dsu['k_az'])
+        distk0_to_k45_az = (ind45_az-ind0_az)
+        borninf_az = ind0_az-distk0_to_k45_az
+
         dsu = dsu.isel(
-            k_rg=slice(indkrg_bo, indkrg_up), k_az=slice(indkaz_bo, indkaz_up)
+            k_rg=slice(borninf,ind45_rg), k_az=slice(borninf_az, ind45_az)
         )
     dsu = dsu.assign_coords({"k_rg": k_rg_ref.values, "k_az": k_az_ref.values})
     dsu = dsu.assign_coords({"nc_number": nc_number})
@@ -487,7 +490,7 @@ def preprrocess(
     return dsu
 
 
-def get_reference_wavenumbers(ds, indkaz_bo, indkaz_up):
+def get_reference_wavenumbers(ds,indkaz_bo=None,indkaz_up=None):
     """
 
     Parameters
@@ -511,8 +514,19 @@ def get_reference_wavenumbers(ds, indkaz_bo, indkaz_up):
             dims=["freq_line"],
         )
     else:  # new version L1C WV symmetrized with WW3 sp
-        k_rg_ref = k_rg_ref_symm
-        k_az_ref = k_az.isel(k_az=slice(indkaz_bo, indkaz_up))
+        ind0ref_rg = get_k0(k_rg_ref_symm)
+        ind45ref_rg = get_k45m(k_rg_ref_symm)
+        distk0_to_k45 = (ind45ref_rg-ind0ref_rg)
+        borninf = ind0ref_rg-distk0_to_k45
+        k_rg_ref = k_rg_ref_symm.isel({'k_rg':slice(borninf,ind45ref_rg)})
+
+
+        ind0ref_az = get_k0(k_az)
+        ind45ref_az = get_k45m(k_az)
+        distk0_to_k45_az = (ind45ref_az-ind0ref_az)
+        borninf = ind0ref_az-distk0_to_k45_az
+        k_az_ref = k_az.isel({'k_az':slice(borninf,ind45ref_az)})
+        # k_az_ref = k_az.isel(k_az=slice(indkaz_bo, indkaz_up))
         k_az_ref = k_az_ref.assign_coords({"k_az": np.arange(len(k_az_ref))})
         k_az_ref = xr.DataArray(
             k_az_ref.values,
@@ -540,6 +554,12 @@ def get_index_wavenumbers(ds):
     indkaz_bo = np.argmin(abs(ds["k_az"].data + val_k_az))
     return indkaz_bo, indkaz_up, indkrg_up, indkrg_bo
 
+def get_k0(k):
+    return np.where(k.data==0.)[0][0]
+
+def get_k45m(k):
+    return np.argmin(abs(k.data-0.1396))
+
 
 def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
     """
@@ -556,6 +576,7 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
         logging.info("dev mode -> reduce number of safe to 2")
         list_SAFEs = list_SAFEs[0:10]
     k_rg_ref = None
+    k_az_ref = None
     cpt_nc = 0
     tmp = []
     vL1C = "unknown"
@@ -575,20 +596,15 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
                 vL1C = dt.attrs["L1C_product_version"]
                 vL1B = dt.attrs["L1B_product_version"]
                 dsfirst = dt["intraburst"].to_dataset()
-                indkaz_bo, indkaz_up, indkrg_up, indkrg_bo = get_index_wavenumbers(
-                    dsfirst
-                )
+                # indkaz_bo, indkaz_up, indkrg_up, indkrg_bo = get_index_wavenumbers(
+                #     dsfirst
+                # )
                 k_rg_ref, k_az_ref = get_reference_wavenumbers(
-                    dsfirst, indkaz_bo, indkaz_up
-                )
+                    dsfirst)
             for ff in lst_nc_l1c:
                 if keep_xspectrum:
                     tmpds = preprrocess(
                         ff,
-                        indkrg_up,
-                        indkrg_bo,
-                        indkaz_bo,
-                        indkaz_up,
                         k_rg_ref,
                         k_az_ref,
                         typee="intra",
@@ -708,7 +724,7 @@ def main():
         required=True,
         help="directory where L1C stacked files will be stored",
     )
-    parser.add_argument('--finalarchive',help='the files are produce in args.outputdir and then moved in args.finalarchive (using mv)',required=False)
+    parser.add_argument('--finalarchive',help='the files are produce in args.outputdir and then moved in args.finalarchive (using mv)',required=True)
     parser.add_argument(
         "--dev",
         action="store_true",
