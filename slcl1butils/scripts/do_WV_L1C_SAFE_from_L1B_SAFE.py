@@ -224,8 +224,9 @@ def append_ancillary_field(ancillary, ds_intra):
             raster_ds = ww3_global_yearly_3h(filename, closest_date)
 
         # Get the polygons of the swath data
+        first_pola_available = ds_intra.coords['pol'].data[0]
         polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
-            ds_intra, swath_only=True
+            ds_intra,polarization=first_pola_available, swath_only=True
         )
         # Crop the raster to the swath bounding box limit
 

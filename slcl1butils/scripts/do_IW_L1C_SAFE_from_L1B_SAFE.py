@@ -271,8 +271,9 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     else:
         raise ValueError("%s ancillary name not handled" % ancillary["name"])
     # Get the polygons of the swath data
+    first_pola_available = ds_intra.coords['pol'].data[0]
     polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
-        ds_intra, swath_only=True
+        ds_intra,polarization=first_pola_available, swath_only=True
     )
     # Crop the raster to the swath bounding box limit
     raster_bb_ds = raster_cropping_in_polygon_bounding_box(
