@@ -107,7 +107,7 @@ nbsphinx_execute = 'always'
 nbsphinx_timeout = 300
 
 nbsphinx_prolog = """
-npsphinx prolog... I dont know what to write here....
+sphinx slcl1butils documentation
 """
 
 today_fmt = '%b %d %Y at %H:%M'

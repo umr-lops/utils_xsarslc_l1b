@@ -12,7 +12,8 @@ try:
 except:
     pass #TODO fix this dependency keep or let
 from slcl1butils import spectrum_rotation
-from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
+# from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
+from xsarslc.processing.xspectra import symmetrize_xspectrum
 #import slcl1butils.plotting.add_azimuth_cutoff_lines_on_polar_spec_fig #wavetoolbox
 reference_oswK_1145m_60pts = np.array([0.005235988, 0.00557381, 0.005933429, 0.00631625, 0.00672377,
     0.007157583, 0.007619386, 0.008110984, 0.008634299, 0.009191379,
@@ -104,14 +105,12 @@ def add_polar_direction_lines(deg_step=30):
         y = np.array([y1,y2])
         x = np.array([x2,x1])
         y = np.array([y2,y1])
-        #print(x)
+
         plt.plot(x,y,c='grey',alpha=0.3,lw=1)
         #rotn = np.degrees(np.arctan2(y[1:]-y[:-1], x[1:]-x[:-1]))[0]
         rotn = theta #label
         rotn = (offset_angle+rotn)%360
         #if rotn>0 and rotn<300:
-        # if True:
-        #print(rotn)
         if abs(rotn)>90: #on retourne le label si ca depasse 90 ou -90
             rotn  = (rotn+180)%180
         plt.annotate("%i°"%np.rint(rotn), xy=(x3, y3), rotation=rotn,fontsize=6,color='grey')
@@ -193,7 +192,7 @@ def display_polar_spectra(allspecs,heading,part='Re',limit_display_wv=100,title=
 
 
 
-def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fig,cat_xspec='intra',part='Re',
+def plot_a_single_xspec_cart_L1B_IW(ds,polarization,tile_line_i,tile_sample_i,title,fig,cat_xspec='intra',part='Re',
                                     rotation=False,orbit_pass=None,platform_heading=None,dpi=100,figsize=(8,6),
                                     outputfile=None,skip_symmetrize=False):
     """
@@ -202,7 +201,7 @@ def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fi
     ----------
     ds xarray.Dataset intra or inter from L1B IFREMER IW SLC product
     orbit_pass str 'Descending' or 'Ascending'
-    bursti int
+    polarization (str): VV or VH or ...
     tile_line_i int
     tile_sample_i int
     title str
@@ -225,18 +224,19 @@ def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fi
     tau_id = 2
     add_colorbar = True
     #fig = plt.figure()
-    set_xspec = ds[{'burst':bursti,'tile_line':tile_line_i,'tile_sample':tile_sample_i}]
-    if 'k_az' in  set_xspec.dims or skip_symmetrize is True:
-        print('symmetrize and swap_dims already done')
-    else:
-        set_xspec = set_xspec.swap_dims({'freq_line': 'k_az', 'freq_sample': 'k_rg'})
-        set_xspec = symmetrize_xspectrum(set_xspec, dim_range='k_rg', dim_azimuth='k_az')
     if cat_xspec == 'inter':
         #varname = cat_xspec+'burst_xspectra_'+part
         varname = cat_xspec + 'burst_xspectra'
     else:
         #varname = 'xspectra_%stau_'+part
-        varname = 'xspectra_%stau' # it is mandatory to recombined Re+1j*Im dans the L1B
+        varname = 'xspectra_%stau'%tau_id # it is mandatory to recombined Re+1j*Im dans the L1B
+    set_xspec = ds[{'tile_line':tile_line_i,'tile_sample':tile_sample_i}].sel({'pol':polarization})[varname]
+    if 'k_az' in  set_xspec.dims or skip_symmetrize is True:
+        print('symmetrize and swap_dims already done')
+    else:
+        set_xspec = set_xspec.swap_dims({'freq_line': 'k_az', 'freq_sample': 'k_rg'})
+        set_xspec = symmetrize_xspectrum(set_xspec, dim_range='k_rg', dim_azimuth='k_az') #
+
     # scales = (0, 5, 0, 5)
     # t = Affine2D().rotate_deg(25)
 
@@ -264,7 +264,6 @@ def plot_a_single_xspec_cart_L1B_IW(ds,bursti,tile_line_i,tile_sample_i,title,fi
             rot_ang = -(180 + platform_heading)
         else:
             rot_ang = platform_heading
-        print('rot_ang',rot_ang)
         #plt.figure()
         img_45 = ndimage.rotate(img, rot_ang, reshape=True)
 
@@ -349,7 +348,7 @@ def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display
 
     Parameters
     ----------
-    allspecs
+    allspecs : DataArray containing a cross spectra variable
     part
     cat_xspec intra or inter
     limit_display_wv
@@ -372,84 +371,85 @@ def display_cartesian_spectra(allspecs,part='Re',cat_xspec='intra',limit_display
 
     """
 
-    for tauval in [tau_id] :
-        if cat_xspec == 'intra':
-            varname = varname% tauval
-            if part == 'Im':
-                thecmap = 'PuOr'
-                if allspecs[varname].dtype in [np.complex_, np.complex,np.complex64]:
-                    coS = allspecs[varname].mean(
-                        dim='%stau' % tauval).imag  # co spectrum = imag part of cross-spectrum
-                else:
-                    coS = allspecs[varname].mean(
-                        dim='%stau' % tauval)  # co spectrum = imag part of cross-spectrum
+    # for tauval in [tau_id] :
+    tauval = tau_id
+    if cat_xspec == 'intra':
+        # varname = varname% tauval
+        if part == 'Im':
+            thecmap = 'PuOr'
+            if allspecs.dtype in [np.complex_, np.complex,np.complex64]:
+                coS = allspecs.mean(
+                    dim='%stau' % tauval).imag  # co spectrum = imag part of cross-spectrum
             else:
-                thecmap = cmap
-                coS = abs(allspecs[varname].mean(
-                    dim='%stau' % tauval).real)  # co spectrum = real part of cross-spectrum
+                coS = allspecs.mean(
+                    dim='%stau' % tauval)  # co spectrum = imag part of cross-spectrum
+        else:
+            thecmap = cmap
+            coS = abs(allspecs.mean(
+                dim='%stau' % tauval).real)  # co spectrum = real part of cross-spectrum
 
-        else:# inter burst case (without tau dimension)
-            if part == 'Im':
-                thecmap = 'PuOr'
-                if allspecs[varname].dtype in [np.complex_, np.complex]:
-                    coS = allspecs[varname].imag  # co spectrum = imag part of cross-spectrum
-                else:
-                    coS = allspecs[varname]
+    else:# inter burst case (without tau dimension)
+        if part == 'Im':
+            thecmap = 'PuOr'
+            if allspecs.dtype in [np.complex_, np.complex]:
+                coS = allspecs.imag  # co spectrum = imag part of cross-spectrum
             else:
-                thecmap = cmap
-                coS = abs(allspecs[varname])
-        crossSpectraRe_red = coS.where(
-            np.logical_and(np.abs(coS[kx_varname]) <= 0.14,np.abs(coS[ky_varname]) <= 0.14),drop=True)
-        #crossSpectraRe_red = crossSpectraRe_red.rolling(kx=3,center=True).mean().rolling(ky=3,center=True).mean()
-        if rolling:
-            crossSpectraRe_red = crossSpectraRe_red.rolling({kx_varname:3}, center=True).mean().rolling({ky_varname:3}, center=True).mean()
-
-        # filter high wavelength (for test)
-        # crossSpectraRe_red = crossSpectraRe_red.where(
-        #     np.logical_and(np.abs(crossSpectraRe_red[kx_varname]) >= 2*np.pi/500., np.abs(crossSpectraRe_red[ky_varname]) >= 2*np.pi/500.), drop=True)
-        # if True:
-        #     lower_wl = 43.
-        #     higher_wl = 250.
-        #     from spectrum_momentum import filter_cartesian_with_wavelength_ring
-        #     crossSpectraRe_red = filter_cartesian_with_wavelength_ring(lower_wl, higher_wl, crossSpectraRe_red)
-        # partie display plot
-        if fig is None:
-            plt.figure(figsize=(10,8),dpi=dpi)
-        if ax is None:
-
-            ax = plt.subplot(1,1,1,polar=False)
-        # add azimuth / range red axis
-        # plt.axhline(y=0)
-        plt.plot([0, 0], [-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], 'c--',alpha=0.7,)
-        plt.text(-0.001,0.05,'azimuth',color='c',rotation=90, va='center',fontsize=7)
-        plt.plot([-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], [0, 0], 'r--',alpha=0.7)
-        plt.text(0.05, 0.004, 'range', color='r', rotation=0, va='center',fontsize=7)
-        crossSpectraRe_red = crossSpectraRe_red.transpose(ky_varname, kx_varname)
-        im = crossSpectraRe_red.plot(cmap=thecmap,alpha=0.8,add_colorbar=add_colorbar,vmax=vmax)
-        add_cartesian_wavelength_circles(default_values=circles_wavelength)
-
-
-
-        plt.legend(loc=1)
-        plt.grid(True)
-        plt.xlim(-2.0*np.pi/limit_display_wv,2.0*np.pi/limit_display_wv)
-        plt.ylim(-2.0*np.pi/limit_display_wv,2.0*np.pi/limit_display_wv)
-        #display_xspectra_grid.circle_plot(ax,r=[300,400,500,600])
-        #ax.set_rmax(2.0*np.pi/limit_display_wv)
-        if title is None:
-            plt.title('tau : %s' % tauval,fontsize=title_fontsize)
+                coS = allspecs
         else:
-            plt.title(title,fontsize=title_fontsize)
-        if outputfile:
-            plt.axis('scaled')  # to make the circle looks like circles
-            filename, file_extension = os.path.splitext(outputfile)
-            plt.savefig(outputfile,format=file_extension.replace('.',''))
-            logging.info('outputfile : %s',outputfile)
-        else:
-            if interactive:
-                #plt.show()
-                pass
-        return im
+            thecmap = cmap
+            coS = abs(allspecs)
+    crossSpectraRe_red = coS.where(
+        np.logical_and(np.abs(coS[kx_varname]) <= 0.14,np.abs(coS[ky_varname]) <= 0.14),drop=True)
+    #crossSpectraRe_red = crossSpectraRe_red.rolling(kx=3,center=True).mean().rolling(ky=3,center=True).mean()
+    if rolling:
+        crossSpectraRe_red = crossSpectraRe_red.rolling({kx_varname:3}, center=True).mean().rolling({ky_varname:3}, center=True).mean()
+
+    # filter high wavelength (for test)
+    # crossSpectraRe_red = crossSpectraRe_red.where(
+    #     np.logical_and(np.abs(crossSpectraRe_red[kx_varname]) >= 2*np.pi/500., np.abs(crossSpectraRe_red[ky_varname]) >= 2*np.pi/500.), drop=True)
+    # if True:
+    #     lower_wl = 43.
+    #     higher_wl = 250.
+    #     from spectrum_momentum import filter_cartesian_with_wavelength_ring
+    #     crossSpectraRe_red = filter_cartesian_with_wavelength_ring(lower_wl, higher_wl, crossSpectraRe_red)
+    # partie display plot
+    if fig is None:
+        plt.figure(figsize=(10,8),dpi=dpi)
+    if ax is None:
+
+        ax = plt.subplot(1,1,1,polar=False)
+    # add azimuth / range red axis
+    # plt.axhline(y=0)
+    plt.plot([0, 0], [-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], 'c--',alpha=0.7,)
+    plt.text(-0.001,0.05,'azimuth',color='c',rotation=90, va='center',fontsize=7)
+    plt.plot([-2.*np.pi/limit_display_wv, 2.*np.pi/limit_display_wv], [0, 0], 'r--',alpha=0.7)
+    plt.text(0.05, 0.004, 'range', color='r', rotation=0, va='center',fontsize=7)
+    crossSpectraRe_red = crossSpectraRe_red.transpose(ky_varname, kx_varname)
+    im = crossSpectraRe_red.plot(cmap=thecmap,alpha=0.8,add_colorbar=add_colorbar,vmax=vmax)
+    add_cartesian_wavelength_circles(default_values=circles_wavelength)
+
+
+
+    plt.legend(loc=1)
+    plt.grid(True)
+    plt.xlim(-2.0*np.pi/limit_display_wv,2.0*np.pi/limit_display_wv)
+    plt.ylim(-2.0*np.pi/limit_display_wv,2.0*np.pi/limit_display_wv)
+    #display_xspectra_grid.circle_plot(ax,r=[300,400,500,600])
+    #ax.set_rmax(2.0*np.pi/limit_display_wv)
+    if title is None:
+        plt.title('tau : %s' % tauval,fontsize=title_fontsize)
+    else:
+        plt.title(title,fontsize=title_fontsize)
+    if outputfile:
+        plt.axis('scaled')  # to make the circle looks like circles
+        filename, file_extension = os.path.splitext(outputfile)
+        plt.savefig(outputfile,format=file_extension.replace('.',''))
+        logging.info('outputfile : %s',outputfile)
+    else:
+        if interactive:
+            #plt.show()
+            pass
+    return im
 def cart2pol(x, y):
     rho = np.sqrt(x ** 2 + y ** 2)
     phi = np.arctan2(y, x)
@@ -467,8 +467,7 @@ def add_cartesian_wavelength_circles(default_values=[100,300,600]):
     for rru in default_values:
         r100 = np.ones(N_pts) * 2 * np.pi / rru
         #r300 = np.ones(N_pts) * 2 * np.pi / 300
-        # print(phi)
-        # print(r)
+
         coords_cart_100 = []
         for uu in range(N_pts):
             coords_cart_100.append(pol2cart(r100[uu], phi[uu]))
@@ -478,7 +477,6 @@ def add_cartesian_wavelength_circles(default_values=[100,300,600]):
         # for uu in range(N_pts):
         #     coords_cart_300.append(pol2cart(r300[uu], phi[uu]))
         # coords_cart_300 = np.array(coords_cart_300)
-        # print(coords_cart_300.shape)
         # plt.plot(coords_cart_300[:, 0], coords_cart_300[:, 1], label='300 m')
         plt.plot(coords_cart_100[:, 0], coords_cart_100[:, 1],'--', label='%s m'%rru)
 
