@@ -166,7 +166,7 @@ def xndindex(sizes):
         yield {k: l for k, l in zip(d, k[0])}
 
 
-def get_l1c_filepath(l1b_fullpath, version, format="nc", outputdir=None, makedir=True):
+def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     """
 
     Args:
@@ -220,10 +220,8 @@ def get_l1c_filepath(l1b_fullpath, version, format="nc", outputdir=None, makedir
     elif '-' in os.path.basename(l1c_full_path):
         # lastpiece = l1c_full_path[-6:]
         lastpiece = '-'+l1c_full_path.split("-")[-1]
-    if format == "nc":
-        l1c_full_path = l1c_full_path.replace(lastpiece, '-'+version.lower() + ".nc")
-    elif format == "zarr":
-        l1c_full_path = l1c_full_path.replace(lastpiece, version.lower() + ".zarr")
+    l1c_full_path = l1c_full_path.replace(lastpiece, '-'+version.lower() + ".nc")
+
     logging.debug("File out: %s ", l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)

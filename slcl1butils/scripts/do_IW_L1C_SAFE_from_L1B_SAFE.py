@@ -57,6 +57,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
         colocat: bool
         time_separation: str (e.g. '2tau')
         overwrite: bool True -> overwrite existing l1c if it exists
+        output_format (str): .nc only supported for now
         dev: bool True -> early stop after one l1b nc file processing to dev/test
 
     Returns:
@@ -106,7 +107,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
         pbar.set_description("")
         l1b_fullpath = files[ii]
         l1c_full_path = get_l1c_filepath(
-            l1b_fullpath, version=version, outputdir=outputdir, format=output_format
+            l1b_fullpath, version=version, outputdir=outputdir
         )
         if os.path.exists(l1c_full_path) and overwrite is False:
             logging.debug("%s already exists", l1c_full_path)
@@ -154,14 +155,11 @@ def do_L1C_SAFE_from_L1B_SAFE(
             #      # xspectra_2tau_Re(burst, tile_line, tile_sample, freq_line, freq_sample, \2tau)
             ds_intra = netcdf_compliant(ds_intra)
             ds_inter = netcdf_compliant(ds_inter)
-            if output_format == "nc":
-                save_l1c_to_netcdf(
-                        l1c_full_path, ds_intra, ds_inter, version=version
-                    )
-                cpt['saved_in_nc'] += 1
-            elif output_format == "zarr":
-                save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version=version)
-                cpt["saved_in_zarr"] += 1
+            save_l1c_to_netcdf(
+                    l1c_full_path, ds_intra, ds_inter, version=version
+                )
+            cpt['saved_in_nc'] += 1
+
     logging.info("cpt: %s", cpt)
     return l1c_full_path
 
