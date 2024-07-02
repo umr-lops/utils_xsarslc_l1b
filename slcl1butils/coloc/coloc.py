@@ -90,15 +90,14 @@ def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=Tr
         return raster_mapped
 
 
-def do_coloc_L1B_with_raster_SAFE(full_safe_file, ancillary_list, skip=True):
+def do_coloc_L1B_with_raster_SAFE(full_safe_file, ancillary_list, skip=True)->int:
     """
 
-    Args:
-        full_safe_file: str
-        ancillary_list: list
-        skip: bool [optional]
+    :param full_safe_file (str): path of the product to co-localise
+    :param ancillary_list (list): information about the reference products to add
+    :param skip (bool): True -> do nothing to original product [optional]
 
-    Returns:
+    :Returns:
 
     """
     # TODO: see whether we keep or not this method
@@ -181,7 +180,7 @@ def do_coloc_L1B_with_raster_SAFE(full_safe_file, ancillary_list, skip=True):
         # Merging the datasets
         ds_intra = xr.merge([l1b_ds_intra, xr.merge(ds_intra)])
         ds_inter = xr.merge([l1b_ds_inter, xr.merge(ds_inter)])
-        #  Building the output datatree
+        # Building the output datatree
         # Data Tree for outputs
         dt = DataTree()
         dt['intraburst'] = DataTree(data=ds_intra)
