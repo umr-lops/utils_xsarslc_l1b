@@ -4,19 +4,17 @@ import xarray as xr
 import logging
 
 
-def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau'):
+def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau')->(xr.DataArray,xr.Dataset):
     """
 
-    Args:
-        _file
-              (str) full path L1B nc file
-        burst_type
-              (str) intra or inter
-        time_separation
-              (str) 2tau or 1tau...
+    :params _file (str): full path L1B nc file
+    :params burst_type (str): intra or inter
+    :params time_separation (str): 2tau or 1tau...
 
-    Returns:
+    :Returns:
 
+        xs (xarray.DataArray):
+        ds (xarray.Dataset):
     """
     # Reading the l1b file
     # Loading the specified burst group

@@ -20,10 +20,8 @@ expected_l1c = [
 def test_outputfile_path(l1b_fullpath, expected_l1c):
     version = "B02"
     outputdir = "/tmp/"
-    output_format = "nc"
     l1c_full_path = get_l1c_filepath(
-        l1b_fullpath, version=version, outputdir=outputdir, format=output_format
-    )
+        l1b_fullpath, version=version, outputdir=outputdir)
 
     print(l1c_full_path)
     assert l1c_full_path == expected_l1c
