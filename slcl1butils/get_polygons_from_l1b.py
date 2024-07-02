@@ -172,7 +172,7 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file,polarization, ik=0, **kwargs)
                                                                                              variable_names=variable_names,
                                                                                              ik=ik)
         else:
-            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds)
+            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bgroup(l1b_ds,polarization)
 
         # polygons
         for polygons_varname in polygons_varnames:
@@ -239,7 +239,7 @@ def get_swath_tiles_polygons_from_l1bfiles(l1b_files,polarization, ik=0, **kwarg
                                                                                             variable_names=variable_names,
                                                                                             ik=ik)
         else:
-            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bfile(l1b_file)
+            _polygons, _coordinates, _variables = get_swath_tiles_polygons_from_l1bfile(l1b_file,polarization)
 
         # Fill the output for each burst_type
         for burst_type in burst_types:
