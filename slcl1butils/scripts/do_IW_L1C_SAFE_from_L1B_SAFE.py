@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from glob import glob
 import numpy as np
 import xarray as xr
-from datatree import DataTree
+from xarray import DataTree
 import time
 import logging
 import sys, os

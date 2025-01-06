@@ -5,11 +5,10 @@ from slcl1butils.raster_readers import resource_strftime
 from slcl1butils.raster_readers import ww3_IWL1Btrack_hindcasts_30min
 import sys, os
 from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
-from datetime import datetime, timedelta
+from datetime import datetime
 from glob import glob
 import numpy as np
 import xarray as xr
-from datatree import DataTree
 import logging
 
 
@@ -182,9 +181,9 @@ def do_coloc_L1B_with_raster_SAFE(full_safe_file, ancillary_list, skip=True)->in
         ds_inter = xr.merge([l1b_ds_inter, xr.merge(ds_inter)])
         # Building the output datatree
         # Data Tree for outputs
-        dt = DataTree()
-        dt['intraburst'] = DataTree(data=ds_intra)
-        dt['interburst'] = DataTree(data=ds_inter)
+        dt = xr.DataTree()
+        dt['intraburst'] = xr.DataTree(data=ds_intra)
+        dt['interburst'] = xr.DataTree(data=ds_inter)
         # return dt, ds_intra, ds_inter
 
         # Saving the results in netCDF

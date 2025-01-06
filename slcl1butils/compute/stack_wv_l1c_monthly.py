@@ -14,7 +14,6 @@ import os
 import datetime
 import time
 import argparse
-import datatree
 from slcl1butils.utils import get_memory_usage
 from slcl1butils.get_config import get_conf
 from dateutil import relativedelta
@@ -663,7 +662,7 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
     vL1C = "unknown"
     vL1B = "unknown"
     # ds = None
-    dtnew = datatree.DataTree(name="root", data=None)
+    dtnew = xr.DataTree(name="root", data=None)
 
     if len(list_SAFEs) > 0:
         # for safe_xsp in list_SAFEs:
@@ -676,12 +675,12 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
                 logging.warning("empty safe: %s", safe_xsp)
             else:
                 if ssi==0:
-                    dt = datatree.open_datatree(lst_nc_l1c[0])
+                    dt = xr.open_datatree(lst_nc_l1c[0])
                     vL1C = dt.attrs["L1C_product_version"]
                     vL1B = dt.attrs["L1B_product_version"]
                 if keep_xspectrum is True and k_rg_ref is None: # code below executed only once thanks to this line
                     # dsfirst = xr.open_dataset(lst_nc_l1c[0], group='intraburst', engine='netcdf4', cache=False)
-                    dt = datatree.open_datatree(lst_nc_l1c[0])
+                    dt = xr.open_datatree(lst_nc_l1c[0])
                     dsfirst = dt["intraburst"].to_dataset()
                     # indkaz_bo, indkaz_up, indkrg_up, indkrg_bo = get_index_wavenumbers(
                     #     dsfirst
@@ -765,9 +764,9 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
                 ds_sar_l1b[vv].attrs['source'] = 'SAR Ifremer level-1B processor for WV SLC'
         ds_sar_l1b['longitude'].attrs['description'] = 'longitude of the center of level-1B tile from Sentinel-1 WV imagette'
         ds_sar_l1b['latitude'].attrs['description'] = 'latitude of the center of level-1B tile from Sentinel-1 WV imagette'
-        node_ecm = datatree.DataTree(name="ecmwf_0100_1h", parent=dtnew, data=ds_ecmwf)
-        node_ww3 = datatree.DataTree(name="ww3_global_yearly_3h", parent=dtnew, data=ds_ww3)
-        node_l1b = datatree.DataTree(name=GROUP_NAME_SAR, parent=dtnew, data=ds_sar_l1b)
+        node_ecm = xr.DataTree(name="ecmwf_0100_1h", parent=dtnew, data=ds_ecmwf)
+        node_ww3 = xr.DataTree(name="ww3_global_yearly_3h", parent=dtnew, data=ds_ww3)
+        node_l1b = xr.DataTree(name=GROUP_NAME_SAR, parent=dtnew, data=ds_sar_l1b)
         # dt['ecmwf_0100_1h'] = ds_ecmwf
         # dt['ww3_global_yearly_3h'] = ds_ww3
         # dt['sentinel1_wv_l1b'] = ds_sar_l1b

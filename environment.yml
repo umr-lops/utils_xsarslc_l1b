@@ -6,7 +6,6 @@ dependencies:
   - geoviews
   - fsspec
   - numpy
-  - xarray-datatree
   - xarray
   - rasterio
   - rioxarray

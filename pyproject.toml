@@ -18,7 +18,6 @@ dependencies = [
     "numpy",
     "netCDF4",
     "shapely",
-    "xarray-datatree",
     'tqdm',
     "zarr",
     'fsspec',

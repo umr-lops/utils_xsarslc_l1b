@@ -6,7 +6,7 @@ slcl1butils: functions to play with IFREMER L1B Sentinel-1 SLC SAR products
 
 Acquisition modes available in L1B IFREMER product family are IW and WV.
 
-The products are *netCDF* files containing `datatree`_ object.
+The products are *netCDF* files containing `xarray.datatree` object.
 
 
 
@@ -104,5 +104,4 @@ Last documentation build: |today|
    basic_api
 
 .. _on github: https://github.com/umr-lops/utils_xsarslc_l1b
-.. _datatree: https://github.com/xarray-contrib/datatree
 .. _xarray: http://xarray.pydata.org

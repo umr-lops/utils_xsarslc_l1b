@@ -23,7 +23,6 @@ dependencies:
   - fsspec
   # data
   - xarray
-  - xarray-datatree
   - dask
   - numpy
   - pandas

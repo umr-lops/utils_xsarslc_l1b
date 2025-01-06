@@ -6,7 +6,6 @@ import holoviews as hv
 import geoviews as gv
 import logging
 import os
-import datatree
 
 gv.extension("bokeh")
 
@@ -98,8 +97,6 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
 
     """
     ds = open_of_use(ff, bursttype)
-    # ds.load()
-    # ds = datatree.open_datatree(ff)[bursttype].to_dataset() # it doesnt change anything to segmentation fault...
     if "burst" in ds[variable].coords:
         stackable_coords = ["burst", "tile_line"]
     else:

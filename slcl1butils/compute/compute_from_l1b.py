@@ -18,10 +18,6 @@ def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau')->(xr.
     """
     # Reading the l1b file
     # Loading the specified burst group
-    # dt = datatree.open_datatree(_file)
-    # Version 1.4
-    # ds = xr.open_dataset(_file,group=burst_type+'burst_xspectra')
-    # Version 1.4a
     if 'wv' in _file:
         ds = xr.open_dataset(_file, group=burst_type)
     else:
@@ -99,10 +95,7 @@ def compute_xs_from_l1b(_file, burst_type='intra', time_separation='2tau')->(xr.
 def compute_xs_from_l1b_wv(_file, time_separation='2tau'):
     # Reading the l1b file
     # Loading the specified burst group
-    # dt = datatree.open_datatree(_file)
-    # Version 1.4
-    # ds = xr.open_dataset(_file,group=burst_type+'burst_xspectra')
-    # Version 1.4a
+
     ds = xr.open_dataset(_file, group='')
 
     # ds = dt[burst_type+'burst_xspectra'].to_dataset()
