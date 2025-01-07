@@ -4,8 +4,8 @@
 Installation
 ************
 
-L1B SAR SLC IFREMER products are netCDF (.nc) files containing groups.
-To read netCDF files with groups, a possible python library is `xarray-datatree`.
+Level-1B SAR SLC IFREMER products are netCDF (.nc) files containing groups.
+To read netCDF files with groups, a possible python library is `xarray`.
 Installation in a conda_ environment is recommended.
 
 

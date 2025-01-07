@@ -60,7 +60,6 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable", None),
     "xarray": ("https://docs.xarray.dev/en/latest/", None),
     "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
-    "datatree": ("https://xarray-datatree.readthedocs.io/en/latest/", None),
     'geoviews': ('https://geoviews.org/index.html', None)
 }
 

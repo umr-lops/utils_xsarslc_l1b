@@ -1,36 +1,36 @@
 import argparse
-import copy
-import pdb
-
-import slcl1butils
-from slcl1butils.raster_readers import ecmwf_0100_1h
-from slcl1butils.raster_readers import ww3_global_yearly_3h
-from slcl1butils.raster_readers import resource_strftime
-from slcl1butils.raster_readers import ww3_IWL1Btrack_hindcasts_30min
-from slcl1butils.utils import get_l1c_filepath
-from slcl1butils.compute.homogeneous_output import add_missing_variables
-from datetime import datetime, timedelta
+import logging
+import os
+import time
+import warnings
+from collections import defaultdict
+from datetime import datetime
 from glob import glob
+
 import numpy as np
 import xarray as xr
-from datatree import DataTree
-import time
-import logging
-import sys, os
-from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
+from tqdm import tqdm
+from xarray import DataTree
+
+import slcl1butils
 from slcl1butils.coloc.coloc import (
-    raster_cropping_in_polygon_bounding_box,
     coloc_tiles_from_l1bgroup_with_raster,
+    raster_cropping_in_polygon_bounding_box,
 )
 from slcl1butils.coloc.coloc_IW_WW3spectra import (
     resampleWW3spectra_on_TOPS_SAR_cartesian_grid,
 )
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
+from slcl1butils.compute.homogeneous_output import add_missing_variables
 from slcl1butils.get_config import get_conf
-from slcl1butils.utils import get_memory_usage, netcdf_compliant
-from collections import defaultdict
-from tqdm import tqdm
-import warnings
+from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
+from slcl1butils.raster_readers import (
+    ecmwf_0100_1h,
+    resource_strftime,
+    ww3_global_yearly_3h,
+    ww3_IWL1Btrack_hindcasts_30min,
+)
+from slcl1butils.utils import get_l1c_filepath, get_memory_usage, netcdf_compliant
 
 warnings.simplefilter(action="ignore")
 conf = get_conf()
@@ -90,7 +90,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
 
     # Processing Parameters:
 
-    #files = glob(os.path.join(run_directory, safe_file, "*_L1B_*nc"))
+    # files = glob(os.path.join(run_directory, safe_file, "*_L1B_*nc"))
     files = glob(os.path.join(run_directory, safe_file, "l1b*nc"))
     logging.info("Number of files: %s", len(files))
     if len(files) == 0:
@@ -119,6 +119,9 @@ def do_L1C_SAFE_from_L1B_SAFE(
                 colocat=colocat,
                 time_separation=time_separation,
             )
+            # add source L1B product
+            ds_intra.attrs["L1B_XSP_PATH"] = os.path.dirname(l1b_fullpath)
+            ds_inter.attrs["L1B_XSP_PATH"] = os.path.dirname(l1b_fullpath)
             ds_intra, ds_inter = add_missing_variables(ds_intra, ds_inter)
             for anc in flag_ancillaries_added:
                 if flag_ancillaries_added[anc]:
@@ -155,10 +158,8 @@ def do_L1C_SAFE_from_L1B_SAFE(
             #      # xspectra_2tau_Re(burst, tile_line, tile_sample, freq_line, freq_sample, \2tau)
             ds_intra = netcdf_compliant(ds_intra)
             ds_inter = netcdf_compliant(ds_inter)
-            save_l1c_to_netcdf(
-                    l1c_full_path, ds_intra, ds_inter, version=version
-                )
-            cpt['saved_in_nc'] += 1
+            save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version=version)
+            cpt["saved_in_nc"] += 1
 
     logging.info("cpt: %s", cpt)
     return l1c_full_path
@@ -211,18 +212,22 @@ def enrich_onesubswath_l1b(
                 ancillary_list[ancillary_name], ds_intra, ds_inter
             )
             flag_ancillaries[ancillary_name] = ancillary_fields_added
-    if 'ww3hindcast_spectra' in ancillary_list:
+    if "ww3hindcast_spectra" in ancillary_list:
         (
             ds_intra,
             flag_ww3spectra_added,
             flag_ww3spectra_found,
-        ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_intra, xspeckind="intra")
+        ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(
+            dsar=ds_intra, xspeckind="intra"
+        )
         flag_ancillaries["ww3spectra_intra"] = flag_ww3spectra_added
         (
             ds_inter,
             flag_ww3spectra_added,
             flag_ww3spectra_found,
-        ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar=ds_inter, xspeckind="inter")
+        ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(
+            dsar=ds_inter, xspeckind="inter"
+        )
         flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
     return ds_intra, ds_inter, flag_ancillaries
 
@@ -245,7 +250,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     # l1b_ds = xr.open_dataset(_file,group=burst_type+'burst')
 
     # ===========================================
-    ## Check if the ancillary data can be found
+    # Check if the ancillary data can be found
     ancillary_fields_added = False
     sar_date = datetime.strptime(
         str.split(ds_intra.attrs["start_date"], ".")[0], "%Y-%m-%d %H:%M:%S"
@@ -266,14 +271,14 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     elif ancillary["name"] == "ww3hindcast_field":
         raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
     elif ancillary["name"] == "ww3hindcast_spectra":
-        pass #nothing to do here, there is a specific method called later in the code.
+        pass  # nothing to do here, there is a specific method called later in the code.
         return ds_intra, ds_inter, ancillary_fields_added
     else:
         raise ValueError("%s ancillary name not handled" % ancillary["name"])
     # Get the polygons of the swath data
-    first_pola_available = ds_intra.coords['pol'].data[0]
+    first_pola_available = ds_intra.coords["pol"].data[0]
     polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
-        ds_intra,polarization=first_pola_available, swath_only=True
+        ds_intra, polarization=first_pola_available, swath_only=True
     )
     # Crop the raster to the swath bounding box limit
     raster_bb_ds = raster_cropping_in_polygon_bounding_box(
@@ -326,9 +331,9 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version):
     # Building the output datatree
     dt = DataTree()
     burst_type = "intra"
-    dt[burst_type + "burst"] = DataTree(data=ds_intra)
+    dt[burst_type + "burst"] = DataTree(ds_intra)
     burst_type = "inter"
-    dt[burst_type + "burst"] = DataTree(data=ds_inter)
+    dt[burst_type + "burst"] = DataTree(ds_inter)
 
     dt.attrs["version_slcl1butils"] = slcl1butils.__version__
     dt.attrs["product_version"] = version
@@ -415,11 +420,14 @@ def main():
     t0 = time.time()
     logging.info("product version to produce: %s", args.version)
     logging.info("outputdir will be: %s", args.outputdir)
-    ancillary_list = {'ecmwf_0100_1h':conf['auxilliary_dataset']['ecmwf_0100_1h'],
-                      'ww3hindcast_field':conf['auxilliary_dataset']['ww3hindcast_field']
-                      }
+    ancillary_list = {
+        "ecmwf_0100_1h": conf["auxilliary_dataset"]["ecmwf_0100_1h"],
+        "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
+    }
     if args.ww3spectra:
-        ancillary_list['ww3hindcast_spectra'] = conf['auxilliary_dataset']['ww3hindcast_spectra']
+        ancillary_list["ww3hindcast_spectra"] = conf["auxilliary_dataset"][
+            "ww3hindcast_spectra"
+        ]
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
         version=args.version,

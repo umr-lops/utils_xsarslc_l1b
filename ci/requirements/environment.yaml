@@ -2,7 +2,7 @@ name: slcl1butils-tests
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
+  - python
   # development
   - ipython
   - pre-commit
@@ -14,6 +14,7 @@ dependencies:
   # testing
   - pytest
   - pytest-reportlog
+  - pytest-cov
   - hypothesis
   - coverage
   # I/O
@@ -23,7 +24,6 @@ dependencies:
   - fsspec
   # data
   - xarray
-  - xarray-datatree
   - dask
   - numpy
   - pandas

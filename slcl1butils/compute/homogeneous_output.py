@@ -1,11 +1,14 @@
-import pdb
+import logging
+
+import numpy as np
+import xarray as xr
 
 from slcl1butils.get_config import get_conf
-import xarray as xr
-import numpy as np
-import logging
+
 conf = get_conf()
-def add_missing_variables(ds_intra,ds_inter)->(xr.Dataset,xr.Dataset):
+
+
+def add_missing_variables(ds_intra, ds_inter) -> (xr.Dataset, xr.Dataset):
     """
 
     Parameters
@@ -19,11 +22,11 @@ def add_missing_variables(ds_intra,ds_inter)->(xr.Dataset,xr.Dataset):
         ds_inter (xr.Dataset)
 
     """
-    for vv in conf['list_variables_expected_intra']:
+    for vv in conf["list_variables_expected_intra"]:
         if vv not in ds_intra:
-            attrs = conf['list_variables_expected_intra'][vv]['attrs']
+            attrs = conf["list_variables_expected_intra"][vv]["attrs"]
             # dims_name = conf['list_variables_expected_intra'][vv]['dims']
-            coords_name = conf['list_variables_expected_intra'][vv]['coords']
+            coords_name = conf["list_variables_expected_intra"][vv]["coords"]
             # dims = {}
             # for di in dims_name:
             #     if di in ds_intra.dims:
@@ -39,13 +42,15 @@ def add_missing_variables(ds_intra,ds_inter)->(xr.Dataset,xr.Dataset):
                 else:
                     coords[co] = 1
             dims = [co for co in coords.keys()]
-            ds_intra = ds_intra.assign({vv:xr.DataArray(coords=coords,dims=dims,attrs=attrs)})
-            logging.info('empty %s added to intra',vv)
-    for vv in conf['list_variables_expected_inter']:
+            ds_intra = ds_intra.assign(
+                {vv: xr.DataArray(coords=coords, dims=dims, attrs=attrs)}
+            )
+            logging.info("empty %s added to intra", vv)
+    for vv in conf["list_variables_expected_inter"]:
         if vv not in ds_inter:
-            attrs = conf['list_variables_expected_intra'][vv]['attrs']
-            dims_name = conf['list_variables_expected_intra'][vv]['dims']
-            coords_name = conf['list_variables_expected_intra'][vv]['coords']
+            attrs = conf["list_variables_expected_intra"][vv]["attrs"]
+            # dims_name = conf["list_variables_expected_intra"][vv]["dims"]
+            coords_name = conf["list_variables_expected_intra"][vv]["coords"]
             # dims = {}
             # for di in dims_name:
             #     if di in ds_inter.dims:
@@ -59,6 +64,8 @@ def add_missing_variables(ds_intra,ds_inter)->(xr.Dataset,xr.Dataset):
                 else:
                     coords[co] = 1
             dims = [co for co in coords.keys()]
-            ds_inter = ds_inter.assign({vv:xr.DataArray(coords=coords,dims=dims,attrs=attrs)})
-            logging.info('empty %s added to intra',vv)
-    return ds_intra,ds_inter
+            ds_inter = ds_inter.assign(
+                {vv: xr.DataArray(coords=coords, dims=dims, attrs=attrs)}
+            )
+            logging.info("empty %s added to intra", vv)
+    return ds_intra, ds_inter

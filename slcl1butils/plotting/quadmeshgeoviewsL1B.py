@@ -1,12 +1,11 @@
-import pdb
-
-import xarray as xr
-import numpy as np
-import holoviews as hv
-import geoviews as gv
 import logging
 import os
-import datatree
+import pdb
+
+import geoviews as gv
+import holoviews as hv
+import numpy as np
+import xarray as xr
 
 gv.extension("bokeh")
 
@@ -98,8 +97,6 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
 
     """
     ds = open_of_use(ff, bursttype)
-    # ds.load()
-    # ds = datatree.open_datatree(ff)[bursttype].to_dataset() # it doesnt change anything to segmentation fault...
     if "burst" in ds[variable].coords:
         stackable_coords = ["burst", "tile_line"]
     else:
@@ -113,7 +110,6 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
             .stack({"y": stackable_coords})
         )
     elif variable in ["macs_Im", "macs_Re"]:
-
         sub = (
             ds[variable]
             .isel({"lambda_range_max_macs": kwargs.get("lambda_range_max_macs")})
@@ -131,7 +127,7 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
             variable,
         )
     sub = sub.rename({"tile_sample": "x"})
-    sub = sub.drop_vars(['y', 'tile_line'])
+    sub = sub.drop_vars(["y", "tile_line"])
     sub = sub.assign_coords({"y": np.arange(sub.y.size)})
     sub = sub.assign_coords({"x": np.arange(sub.x.size)})
     if (sub == 0).any() and variable == "sigma0":
@@ -142,7 +138,7 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
     if (
         np.isnan(sub).any()
         and variable == "sigma0"
-        and (ds["land_flag"].data == False).all()
+        and (ds["land_flag"].data is False).all()
     ):
         print("Nan alerte")
         pdb.set_trace()
@@ -190,7 +186,7 @@ def doQuadMeshL1BorL1C_manyfiles_opt(
     outputdir=None,
     outbasename=None,
     lst_vars=None,
-    **kwargs
+    **kwargs,
 ):
     """
 
@@ -220,7 +216,6 @@ def doQuadMeshL1BorL1C_manyfiles_opt(
     maxis = {}
     for vvi, var in enumerate(variables):
         if isinstance(cmap, list) and len(cmap) == len(variables):
-
             thecmap = cmap[vvi]
         else:
             thecmap = cmap
