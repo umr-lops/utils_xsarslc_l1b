@@ -19,7 +19,7 @@ lonwithNan[1,2]=np.nan
 N,M = 100,100
 field_ww3 = np.random.rand(N,M)
 field_ww3_with_nan = copy.copy(field_ww3)
-field_ww3_with_nan[1,2] = np.NaN
+field_ww3_with_nan[1,2] = np.nan
 xa_ww3 = xr.DataArray(field_ww3, dims=('x','y'),
                                   coords={'y':np.linspace(20,50,N),
                                           'x':np.linspace(100,150,M)})
