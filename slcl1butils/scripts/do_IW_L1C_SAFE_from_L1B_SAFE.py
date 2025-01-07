@@ -119,6 +119,9 @@ def do_L1C_SAFE_from_L1B_SAFE(
                 colocat=colocat,
                 time_separation=time_separation,
             )
+            # add source L1B product
+            ds_intra.attrs['L1B_XSP_PATH'] = os.path.dirname(l1b_fullpath)
+            ds_inter.attrs['L1B_XSP_PATH'] = os.path.dirname(l1b_fullpath)
             ds_intra, ds_inter = add_missing_variables(ds_intra, ds_inter)
             for anc in flag_ancillaries_added:
                 if flag_ancillaries_added[anc]:
@@ -326,9 +329,9 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version):
     # Building the output datatree
     dt = DataTree()
     burst_type = "intra"
-    dt[burst_type + "burst"] = DataTree(data=ds_intra)
+    dt[burst_type + "burst"] = DataTree(ds_intra)
     burst_type = "inter"
-    dt[burst_type + "burst"] = DataTree(data=ds_inter)
+    dt[burst_type + "burst"] = DataTree(ds_inter)
 
     dt.attrs["version_slcl1butils"] = slcl1butils.__version__
     dt.attrs["product_version"] = version
