@@ -224,5 +224,5 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     logging.debug("File out: %s ", l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
         os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
-    l1c_full_path = os.path.normpath(l1c_full_path)
+    l1c_full_path = os.path.normpath(l1c_full_path).replace("\\","/") # platform windows security
     return l1c_full_path
