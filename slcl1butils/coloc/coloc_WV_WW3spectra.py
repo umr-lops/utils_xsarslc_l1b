@@ -1,14 +1,15 @@
-import os
-import pdb
-
-import xarray as xr
 import datetime
 import logging
+import os
+
 import numpy as np
+import xarray as xr
+
+from slcl1butils.legacy_ocean.ocean.xPolarSpectrum import find_closest_ww3
+
 # from ocean.xspectrum import from_ww3
 # from ocean.xPolarSpectrum import find_closest_ww3
 from slcl1butils.legacy_ocean.ocean.xspectrum import from_ww3
-from slcl1butils.legacy_ocean.ocean.xPolarSpectrum import find_closest_ww3
 from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
 
 

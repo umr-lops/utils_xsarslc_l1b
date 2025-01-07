@@ -1,32 +1,34 @@
 import argparse
-import pdb
-
-import slcl1butils
-from slcl1butils.raster_readers import ecmwf_0100_1h
-from slcl1butils.raster_readers import ww3_global_yearly_3h
-from slcl1butils.raster_readers import resource_strftime
-from datetime import datetime, timedelta
+import logging
+import os
+import time
+import warnings
+from collections import defaultdict
+from datetime import datetime
 from glob import glob
+
 import numpy as np
 import xarray as xr
+from tqdm import tqdm
 from xarray import DataTree
-import time
-import logging
-import sys, os
-from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
+
+import slcl1butils
 from slcl1butils.coloc.coloc import (
-    raster_cropping_in_polygon_bounding_box,
     coloc_tiles_from_l1bgroup_with_raster,
+    raster_cropping_in_polygon_bounding_box,
 )
-from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv
 from slcl1butils.coloc.coloc_WV_WW3spectra import (
     resampleWW3spectra_on_SAR_cartesian_grid,
 )
+from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv
 from slcl1butils.get_config import get_conf
-from tqdm import tqdm
-from slcl1butils.utils import get_memory_usage,netcdf_compliant
-import warnings
-from collections import defaultdict
+from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
+from slcl1butils.raster_readers import (
+    ecmwf_0100_1h,
+    resource_strftime,
+    ww3_global_yearly_3h,
+)
+from slcl1butils.utils import get_memory_usage, netcdf_compliant
 
 warnings.simplefilter(action="ignore")
 conf = get_conf()
@@ -149,7 +151,6 @@ def enrich_onesubswath_l1b(
     """
 
     logging.debug("File in: %s", l1b_fullpath)
-    ancillary_product_found = False
     if ancillary_list is None:
         ancillary_list = []
     # ====================
@@ -157,8 +158,6 @@ def enrich_onesubswath_l1b(
     # ====================
     #
     # Intraburst at 2tau x-spectra
-    burst_type = ""  # for WV it is an empty group name
-
     xs_intra, ds_intra = compute_xs_from_l1b_wv(
         l1b_fullpath, time_separation=time_separation
     )
@@ -191,18 +190,16 @@ def append_ancillary_field(ancillary, ds_intra):
     Parameters
     ----------
     ancillary
-    ds_intra xarray.Dataset
+    ds_intra xarray.Dataset Level-1B XSP WV intra burst
 
     Returns
     -------
 
     """
     ancillary_product_found = False
-    # For each L1B
-    # l1b_ds = xr.open_dataset(_file,group=burst_type+'burst')
 
     # ===========================================
-    ## Check if the ancillary data can be found
+    # Check if the ancillary data can be found
     flag_ancillary_field_added = False
     logging.debug("attrs : %s0", ds_intra.attrs["start_date"])
     sar_date = datetime.strptime(
@@ -224,9 +221,9 @@ def append_ancillary_field(ancillary, ds_intra):
             raster_ds = ww3_global_yearly_3h(filename, closest_date)
 
         # Get the polygons of the swath data
-        first_pola_available = ds_intra.coords['pol'].data[0]
+        first_pola_available = ds_intra.coords["pol"].data[0]
         polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
-            ds_intra,polarization=first_pola_available, swath_only=True
+            ds_intra, polarization=first_pola_available, swath_only=True
         )
         # Crop the raster to the swath bounding box limit
 
@@ -235,20 +232,12 @@ def append_ancillary_field(ancillary, ds_intra):
         )
 
         # Loop on the grid in the product
-        burst_types = [""]
-        for burst_type in burst_types:
-            # Define the dataset to work on
-            # get the mapped raster onto swath grid for each tile
 
-            # l1b_ds_intra = xr.open_dataset(_file,group=burst_type+'burst')
-            # _ds = coloc_tiles_from_l1bgroup_with_raster(l1b_ds_intra, raster_bb_ds, apply_merging=False)
-            # ds_intra_list.append(_ds)
-            _ds_intra = coloc_tiles_from_l1bgroup_with_raster(
-                ds_intra, raster_bb_ds, apply_merging=False
-            )
-            # ds_intra_list.append(_ds_intra)
-            # Merging the datasets
-            ds_intra = xr.merge([ds_intra, _ds_intra])
+        _ds_intra = coloc_tiles_from_l1bgroup_with_raster(
+            ds_intra, raster_bb_ds, apply_merging=False
+        )
+        # Merging the datasets
+        ds_intra = xr.merge([ds_intra, _ds_intra])
 
     return ds_intra, ancillary_product_found, flag_ancillary_field_added
 

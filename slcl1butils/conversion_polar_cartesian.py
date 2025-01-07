@@ -1,7 +1,10 @@
+import logging
+
 import numpy as np
 import xarray as xr
-import logging
-def from_xCartesianSpectrum(ds, *, Nphi=120, ksampling='log',keep_nan=True, **kwargs):
+
+
+def from_xCartesianSpectrum(ds, *, Nphi=120, ksampling="log", keep_nan=True, **kwargs):
     """
     Convert a xCartesianSpectrum into a xPolarSpectrum. Grid of the return spectrum depends on the keywords arguments
     If 'size' and 'dr' are provided as keyword arguments, they are used prioritary. Otherwise, kmax and dk are used instead
@@ -17,36 +20,46 @@ def from_xCartesianSpectrum(ds, *, Nphi=120, ksampling='log',keep_nan=True, **kw
         (xarray) : xPolarSpectrum
     """
 
-    kmin = max(np.sort(np.abs(ds.kx))[1], np.sort(np.abs(ds.ky))[1]) # first element is zero
-    kmax = min(np.sort(np.abs(ds.kx))[-3], np.sort(np.abs(ds.ky))[-3]) # if last one is used, interpolation do not work well
+    kmin = max(
+        np.sort(np.abs(ds.kx))[1], np.sort(np.abs(ds.ky))[1]
+    )  # first element is zero
+    kmax = min(
+        np.sort(np.abs(ds.kx))[-3], np.sort(np.abs(ds.ky))[-3]
+    )  # if last one is used, interpolation do not work well
 
-    kwargs.update({'kmin':kmin, 'kmax':kmax, 'ksampling':ksampling, 'Nphi':Nphi})
-    logging.debug('kwargs %s',kwargs)
-    if 'Nk' in kwargs:
+    kwargs.update({"kmin": kmin, "kmax": kmax, "ksampling": ksampling, "Nphi": Nphi})
+    logging.debug("kwargs %s", kwargs)
+    if "Nk" in kwargs:
         k, dk, phi, dphi = SpectrumPolarGrid(**kwargs)
-    elif 'k' in kwargs: #add agrouaze
-        #logging.debug('second way to define k')
-        k = kwargs['k']
+    elif "k" in kwargs:  # add agrouaze
+        # logging.debug('second way to define k')
+        k = kwargs["k"]
         Nk = 60
         dk = np.log(10) * (np.log10(kmax) - np.log10(kmin)) / (Nk - 1) * k
-        _,_,phi,dphi = SpectrumPolarGrid(**kwargs)
+        _, _, phi, dphi = SpectrumPolarGrid(**kwargs)
     else:
-        raise Exception('impossible to define the spectrum grid')
-    k = xr.DataArray(k, dims='k')
-    phi = xr.DataArray(phi, dims='phi')
+        raise Exception("impossible to define the spectrum grid")
+    k = xr.DataArray(k, dims="k")
+    phi = xr.DataArray(phi, dims="phi")
 
-    kx = k*np.cos(phi)
-    ky = k*np.sin(phi)
+    kx = k * np.cos(phi)
+    ky = k * np.sin(phi)
     if keep_nan:
-        myspec= ds.interp(kx=kx, ky=ky).assign_coords(k=k, phi=phi)
+        myspec = ds.interp(kx=kx, ky=ky).assign_coords(k=k, phi=phi)
     else:
-        myspec = ds.interp(kx=kx, ky=ky, kwargs={"fill_value": None}).assign_coords(k=k, phi=phi) # correction Grouazel May 2022 to avoid NaN in polar spectrum
-    myspec = myspec.assign_coords({'dk':xr.DataArray(dk, dims='k')}) if ksampling=='log' else myspec.assign_coords({'dk':xr.DataArray(dk)})
-    myspec.attrs.update({'dphi':dphi})
-    myspec.attrs.pop('dkx', None)
-    myspec.attrs.pop('dky', None)
+        myspec = ds.interp(kx=kx, ky=ky, kwargs={"fill_value": None}).assign_coords(
+            k=k, phi=phi
+        )  # correction Grouazel May 2022 to avoid NaN in polar spectrum
+    myspec = (
+        myspec.assign_coords({"dk": xr.DataArray(dk, dims="k")})
+        if ksampling == "log"
+        else myspec.assign_coords({"dk": xr.DataArray(dk)})
+    )
+    myspec.attrs.update({"dphi": dphi})
+    myspec.attrs.pop("dkx", None)
+    myspec.attrs.pop("dky", None)
 
-    return myspec.drop(('kx','ky'))
+    return myspec.drop(("kx", "ky"))
 
 
 def SpectrumPolarGrid(**kwargs):
@@ -80,24 +93,29 @@ def SpectrumPolarGrid(**kwargs):
                 'lin' : a linear sampling is applied
     """
 
-    Nk = kwargs.pop('Nk', 400)
-    Nphi =  kwargs.pop('Nphi', 120)
-    kmin =  kwargs.pop('kmin', 2*np.pi/800.)
-    kmax =  kwargs.pop('kmax', 4000.)
-    ksampling = kwargs.pop('ksampling', 'log')
+    Nk = kwargs.pop("Nk", 400)
+    Nphi = kwargs.pop("Nphi", 120)
+    kmin = kwargs.pop("kmin", 2 * np.pi / 800.0)
+    kmax = kwargs.pop("kmax", 4000.0)
+    ksampling = kwargs.pop("ksampling", "log")
 
-    #--------------Wavenumber initialization---------------------------
+    # --------------Wavenumber initialization---------------------------
 
-    if ksampling == 'log':
-        k = np.logspace(np.log10(kmin), np.log10(kmax),Nk)
-        dk = np.log(10)*(np.log10(kmax)-np.log10(kmin))/(Nk-1)*k
-    elif ksampling == 'lin':
-        k = np.linspace(kmin, kmax,Nk)
+    if ksampling == "log":
+        k = np.logspace(np.log10(kmin), np.log10(kmax), Nk)
+        dk = np.log(10) * (np.log10(kmax) - np.log10(kmin)) / (Nk - 1) * k
+    elif ksampling == "lin":
+        k = np.linspace(kmin, kmax, Nk)
         #  dk = (kmax-kmin)/(Nk-1)*np.ones(k.shape)
-        dk = (kmax-kmin)/(Nk-1)
+        dk = (kmax - kmin) / (Nk - 1)
     else:
-        raise ValueError('Unknown k sampling method')
+        raise ValueError("Unknown k sampling method")
 
-    dphi = 2*np.pi/Nphi
+    dphi = 2 * np.pi / Nphi
     phi = np.arange(-np.pi, np.pi, dphi)
-    return k,dk, phi,dphi #, 'km':km, 'tm':tm, 'Nk':Nk, 'Nphi':Nphi, 'kmin':kmin, 'kmax':kmax, 'ksampling':ksampling
+    return (
+        k,
+        dk,
+        phi,
+        dphi,
+    )  # , 'km':km, 'tm':tm, 'Nk':Nk, 'Nphi':Nphi, 'kmin':kmin, 'kmax':kmax, 'ksampling':ksampling

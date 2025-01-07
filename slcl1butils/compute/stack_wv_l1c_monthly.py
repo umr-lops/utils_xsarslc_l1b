@@ -3,111 +3,113 @@
 A Grouazel
 Stack WV L1C data per month for stats and training purpose
 """
-import pdb
-
-import xarray as xr
+import argparse
+import datetime
 import glob
 import logging
-import shutil
-import numpy as np
 import os
-import datetime
+import shutil
 import time
-import argparse
-from slcl1butils.utils import get_memory_usage
-from slcl1butils.get_config import get_conf
+
+import numpy as np
+import xarray as xr
 from dateutil import relativedelta
 from tqdm import tqdm
+
+from slcl1butils.get_config import get_conf
+from slcl1butils.utils import get_memory_usage
+
 conf = get_conf()
-GROUP_NAME_SAR = 'sar_sentinel1_wv_l1b_xsp_intraburst'
-VARS_WW3_GRID = ['MAPSTA',
- 'dpt',
- 'ucur',
- 'vcur',
- 'uwnd',
- 'vwnd',
- 'ice',
- 'ibg',
- 'ic1',
- 'ic5',
- 'hs',
- 'lm',
- 't02',
- 't0m1',
- 't01',
- 'fp',
- 'dir',
- 'spr',
- 'dp',
- 'phs0',
- 'phs1',
- 'phs2',
- 'phs3',
- 'phs4',
- 'phs5',
- 'ptp0',
- 'ptp1',
- 'ptp2',
- 'ptp3',
- 'ptp4',
- 'ptp5',
- 'plp0',
- 'plp1',
- 'plp2',
- 'plp3',
- 'plp4',
- 'plp5',
- 'pdir0',
- 'pdir1',
- 'pdir2',
- 'pdir3',
- 'pdir4',
- 'pdir5',
- 'pspr0',
- 'pspr1',
- 'pspr2',
- 'pspr3',
- 'pspr4',
- 'pspr5',
- 'pws0',
- 'pws1',
- 'pws2',
- 'pws3',
- 'pws4',
- 'pws5',
- 'pdp0',
- 'pdp1',
- 'pdp2',
- 'pdp3',
- 'pdp4',
- 'pdp5',
- 'tws',
- 'uust',
- 'vust',
- 'cha',
- 'cge',
- 'faw',
- 'utaw',
- 'vtaw',
- 'utwa',
- 'vtwa',
- 'wcc',
- 'utwo',
- 'vtwo',
- 'foc',
- 'utus',
- 'vtus',
- 'uuss',
- 'vuss',
- 'uabr',
- 'vabr',
- 'uubr',
- 'vubr',
- 'mssu',
- 'mssc',
- 'mssd']
-VARS_ECMF = ["U10",
-    "V10"]
+GROUP_NAME_SAR = "sar_sentinel1_wv_l1b_xsp_intraburst"
+VARS_WW3_GRID = [
+    "MAPSTA",
+    "dpt",
+    "ucur",
+    "vcur",
+    "uwnd",
+    "vwnd",
+    "ice",
+    "ibg",
+    "ic1",
+    "ic5",
+    "hs",
+    "lm",
+    "t02",
+    "t0m1",
+    "t01",
+    "fp",
+    "dir",
+    "spr",
+    "dp",
+    "phs0",
+    "phs1",
+    "phs2",
+    "phs3",
+    "phs4",
+    "phs5",
+    "ptp0",
+    "ptp1",
+    "ptp2",
+    "ptp3",
+    "ptp4",
+    "ptp5",
+    "plp0",
+    "plp1",
+    "plp2",
+    "plp3",
+    "plp4",
+    "plp5",
+    "pdir0",
+    "pdir1",
+    "pdir2",
+    "pdir3",
+    "pdir4",
+    "pdir5",
+    "pspr0",
+    "pspr1",
+    "pspr2",
+    "pspr3",
+    "pspr4",
+    "pspr5",
+    "pws0",
+    "pws1",
+    "pws2",
+    "pws3",
+    "pws4",
+    "pws5",
+    "pdp0",
+    "pdp1",
+    "pdp2",
+    "pdp3",
+    "pdp4",
+    "pdp5",
+    "tws",
+    "uust",
+    "vust",
+    "cha",
+    "cge",
+    "faw",
+    "utaw",
+    "vtaw",
+    "utwa",
+    "vtwa",
+    "wcc",
+    "utwo",
+    "vtwo",
+    "foc",
+    "utus",
+    "vtus",
+    "uuss",
+    "vuss",
+    "uabr",
+    "vabr",
+    "uubr",
+    "vubr",
+    "mssu",
+    "mssc",
+    "mssd",
+]
+VARS_ECMF = ["U10", "V10"]
 VARS_SAR_L1B = [
     "incidence",
     "ground_heading",
@@ -528,32 +530,30 @@ def preprrocess(
         tmpdate = datetime.datetime.strptime(
             dsu.attrs["start_date"], "%Y-%m-%d %H:%M:%S.%f"
         )
-    except:
+    except ValueError:
         tmpdate = datetime.datetime.strptime(
             dsu.attrs["start_date"], "%Y-%m-%d %H:%M:%S"
         )
     # dsu['sardate'] = xr.DataArray(tmpdate)
-    if (
-        "freq_sample" in dsu.coords
-    ):  # when WV L1C are not symmetrized (no WW3 spectra addition) ie old version of the L1B->L1C processor
-        dsu = dsu.isel(
-            freq_sample=slice(0, indkrg_up), freq_line=slice(indkaz_bo, indkaz_up)
-        )
-    else:
-        ind0_rg = get_k0(dsu['k_rg'])
-        ind45_rg = get_k45m(dsu['k_rg'])
-        distk0_to_k45 = (ind45_rg-ind0_rg)
-        borninf = ind0_rg-distk0_to_k45
+    # if (
+    #     "freq_sample" in dsu.coords
+    # ):  # when WV L1C are not symmetrized (no WW3 spectra addition) ie old version of the L1B->L1C processor
+    #     dsu = dsu.isel(
+    #         freq_sample=slice(0, indkrg_up), freq_line=slice(indkaz_bo, indkaz_up)
+    #     )
+    # else:
+    ind0_rg = get_k0(dsu["k_rg"])
+    ind45_rg = get_k45m(dsu["k_rg"])
+    distk0_to_k45 = ind45_rg - ind0_rg
+    borninf = ind0_rg - distk0_to_k45
 
-        ind0_az = get_k0(dsu['k_az'])
-        ind45_az = get_k45m(dsu['k_az'])
-        distk0_to_k45_az = (ind45_az-ind0_az)
-        borninf_az = ind0_az-distk0_to_k45_az
+    ind0_az = get_k0(dsu["k_az"])
+    ind45_az = get_k45m(dsu["k_az"])
+    distk0_to_k45_az = ind45_az - ind0_az
+    borninf_az = ind0_az - distk0_to_k45_az
 
-        dsu = dsu.isel(
-            k_rg=slice(borninf,ind45_rg), k_az=slice(borninf_az, ind45_az)
-        )
-        logging.info('cropped cross spectra : size / %i x %i',dsu.k_rg.size,dsu.k_az.size)
+    dsu = dsu.isel(k_rg=slice(borninf, ind45_rg), k_az=slice(borninf_az, ind45_az))
+    logging.info("cropped cross spectra : size / %i x %i", dsu.k_rg.size, dsu.k_az.size)
     dsu = dsu.assign_coords({"k_rg": k_rg_ref.values, "k_az": k_az_ref.values})
     dsu = dsu.assign_coords({"nc_number": nc_number})
     dsu = dsu.assign_coords(
@@ -566,11 +566,11 @@ def preprrocess(
                 + 1j * dsu["xspectra_%stau_Im" % tautau]
             )
             dsu = dsu.drop(["xspectra_%stau_Re" % tautau, "xspectra_%stau_Im" % tautau])
-    dsu = dsu.drop('line')
+    dsu = dsu.drop("line")
     return dsu
 
 
-def get_reference_wavenumbers(ds,indkaz_bo=None,indkaz_up=None):
+def get_reference_wavenumbers(ds, indkaz_bo=None, indkaz_up=None):
     """
 
     Parameters
@@ -596,16 +596,15 @@ def get_reference_wavenumbers(ds,indkaz_bo=None,indkaz_up=None):
     else:  # new version L1C WV symmetrized with WW3 sp
         ind0ref_rg = get_k0(k_rg_ref_symm)
         ind45ref_rg = get_k45m(k_rg_ref_symm)
-        distk0_to_k45 = (ind45ref_rg-ind0ref_rg)
-        borninf = ind0ref_rg-distk0_to_k45
-        k_rg_ref = k_rg_ref_symm.isel({'k_rg':slice(borninf,ind45ref_rg)})
-
+        distk0_to_k45 = ind45ref_rg - ind0ref_rg
+        borninf = ind0ref_rg - distk0_to_k45
+        k_rg_ref = k_rg_ref_symm.isel({"k_rg": slice(borninf, ind45ref_rg)})
 
         ind0ref_az = get_k0(k_az)
         ind45ref_az = get_k45m(k_az)
-        distk0_to_k45_az = (ind45ref_az-ind0ref_az)
-        borninf = ind0ref_az-distk0_to_k45_az
-        k_az_ref = k_az.isel({'k_az':slice(borninf,ind45ref_az)})
+        distk0_to_k45_az = ind45ref_az - ind0ref_az
+        borninf = ind0ref_az - distk0_to_k45_az
+        k_az_ref = k_az.isel({"k_az": slice(borninf, ind45ref_az)})
         # k_az_ref = k_az.isel(k_az=slice(indkaz_bo, indkaz_up))
         k_az_ref = k_az_ref.assign_coords({"k_az": np.arange(len(k_az_ref))})
         k_az_ref = xr.DataArray(
@@ -634,11 +633,13 @@ def get_index_wavenumbers(ds):
     indkaz_bo = np.argmin(abs(ds["k_az"].data + val_k_az))
     return indkaz_bo, indkaz_up, indkrg_up, indkrg_bo
 
+
 def get_k0(k):
-    return np.where(k.data==0.)[0][0]
+    return np.where(k.data == 0.0)[0][0]
+
 
 def get_k45m(k):
-    return np.argmin(abs(k.data-0.1396))
+    return np.argmin(abs(k.data - 0.1396))
 
 
 def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
@@ -666,7 +667,7 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
 
     if len(list_SAFEs) > 0:
         # for safe_xsp in list_SAFEs:
-        logging.info('loop over the SAFE : %i',len(list_SAFEs))
+        logging.info("loop over the SAFE : %i", len(list_SAFEs))
         for ssi in tqdm(range(len(list_SAFEs))):
             safe_xsp = list_SAFEs[ssi]
             lst_nc_l1c = glob.glob(os.path.join(safe_xsp, "*nc"))
@@ -674,19 +675,20 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
             if len(lst_nc_l1c) == 0:
                 logging.warning("empty safe: %s", safe_xsp)
             else:
-                if ssi==0:
+                if ssi == 0:
                     dt = xr.open_datatree(lst_nc_l1c[0])
                     vL1C = dt.attrs["L1C_product_version"]
                     vL1B = dt.attrs["L1B_product_version"]
-                if keep_xspectrum is True and k_rg_ref is None: # code below executed only once thanks to this line
+                if (
+                    keep_xspectrum is True and k_rg_ref is None
+                ):  # code below executed only once thanks to this line
                     # dsfirst = xr.open_dataset(lst_nc_l1c[0], group='intraburst', engine='netcdf4', cache=False)
                     dt = xr.open_datatree(lst_nc_l1c[0])
                     dsfirst = dt["intraburst"].to_dataset()
                     # indkaz_bo, indkaz_up, indkrg_up, indkrg_bo = get_index_wavenumbers(
                     #     dsfirst
                     # )
-                    k_rg_ref, k_az_ref = get_reference_wavenumbers(
-                        dsfirst)
+                    k_rg_ref, k_az_ref = get_reference_wavenumbers(dsfirst)
                 for ff in lst_nc_l1c:
                     if keep_xspectrum:
                         tmpds = preprrocess(
@@ -698,21 +700,31 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
                         )
                     else:
                         tmpds = xr.open_dataset(ff, group="intraburst")
-                        vars_to_drop = ['xspectra_2tau_Re','xspectra_2tau_Im','efth',
-                        'k_rg','k_az','nc_number'] # for foundation model exercise
+                        vars_to_drop = [
+                            "xspectra_2tau_Re",
+                            "xspectra_2tau_Im",
+                            "efth",
+                            "k_rg",
+                            "k_az",
+                            "nc_number",
+                        ]  # for foundation model exercise
                         vars_to_drop_consolidated = []
                         for vv in tmpds:
                             if vv not in VARS_TO_KEEP and vv not in vars_to_drop:
                                 vars_to_drop_consolidated.append(vv)
 
-                        tmpds = tmpds.drop_vars(vars_to_drop_consolidated) # to avoid all the WW3 grid variables that are not mandatory for Hs regression or spectrum regression
-                        tmpds = tmpds.drop_dims(['k_rg','k_az'])
+                        tmpds = tmpds.drop_vars(
+                            vars_to_drop_consolidated
+                        )  # to avoid all the WW3 grid variables that are not mandatory for Hs regression or spectrum regression
+                        tmpds = tmpds.drop_dims(["k_rg", "k_az"])
                         tmpsubswath = xr.DataArray(
                             int(os.path.basename(ff).split("-")[1].replace("wv", ""))
                         )  # wv1 -> , wv2 -> 2
                         # tmpds = tmpds.assign_coords({'wvmode': tmpsubswath})
                         tmpds["wvmode"] = xr.DataArray(tmpsubswath)
-                        tmpds['wvmode'].attrs = {'description':'sub-swath of the Sentinel-1 SAR WV: wv1 or wv2'}
+                        tmpds["wvmode"].attrs = {
+                            "description": "sub-swath of the Sentinel-1 SAR WV: wv1 or wv2"
+                        }
                         tmpdate = datetime.datetime.strptime(
                             tmpds.attrs["start_date"], "%Y-%m-%d %H:%M:%S.%f"
                         )
@@ -720,11 +732,11 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
                         tmpds = tmpds.drop(
                             [vv for vv in tmpds if "xspectra" in vv] + ["sample"]
                         )
-                        if 'freq_line' in tmpds:
+                        if "freq_line" in tmpds:
                             tmpds = tmpds.drop_dims(["freq_line", "freq_sample"])
-                        tmpds.drop_vars(['corner_longitude','corner_latitude'])
-                        tmpds = tmpds.drop_dims(['c_sample','c_line'])
-                        tmpds = tmpds.drop('line')
+                        tmpds.drop_vars(["corner_longitude", "corner_latitude"])
+                        tmpds = tmpds.drop_dims(["c_sample", "c_line"])
+                        tmpds = tmpds.drop("line")
                         # tmpds = tmpds.assign_coords({"nc_number": cpt_nc})
                         tmpds = tmpds.assign_coords({"sardate": tmpdate})
                         # tmpds = tmpds.expand_dims('nc_number')
@@ -733,7 +745,7 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
         logging.info("nb dataset to combine: %s", cpt_nc)
 
         # ds = xr.concat(tmp, dim="sardate",coords='minimal') # ne fonctionne pas -> conflict in coords
-        ds = xr.combine_by_coords(tmp,combine_attrs="drop_conflicts")
+        ds = xr.combine_by_coords(tmp, combine_attrs="drop_conflicts")
         #
         # la ligne du dessous marche mais cest long je tente autre chsoe
         # ds = xr.combine_by_coords(
@@ -746,27 +758,47 @@ def stack_wv_l1c_per_month(list_SAFEs, dev=False, keep_xspectrum=False):
         for vv in VARS_ECMF:
             if vv in ds:
                 ds_ecmwf[vv] = ds[vv]
-        if 'U10' in ds_ecmwf:
-            ds_ecmwf['U10'].attrs['description'] = 'zonal component of wind speed from ECMWF hourly 0.1deg resolution forecasts'
-            ds_ecmwf['V10'].attrs['description'] = 'meridional component of wind speed from ECMWF hourly 0.1deg resolution forecasts'
-            ds_ecmwf['longitude'].attrs['description'] = 'longitude of the center of level-1B tile from Sentinel-1 WV imagette'
-            ds_ecmwf['latitude'].attrs['description'] = 'latitude of the center of level-1B tile from Sentinel-1 WV imagette'
+        if "U10" in ds_ecmwf:
+            ds_ecmwf["U10"].attrs[
+                "description"
+            ] = "zonal component of wind speed from ECMWF hourly 0.1deg resolution forecasts"
+            ds_ecmwf["V10"].attrs[
+                "description"
+            ] = "meridional component of wind speed from ECMWF hourly 0.1deg resolution forecasts"
+            ds_ecmwf["longitude"].attrs[
+                "description"
+            ] = "longitude of the center of level-1B tile from Sentinel-1 WV imagette"
+            ds_ecmwf["latitude"].attrs[
+                "description"
+            ] = "latitude of the center of level-1B tile from Sentinel-1 WV imagette"
         for vv in VARS_WW3_GRID:
             if vv in ds:
                 ds_ww3[vv] = ds[vv]
-                ds_ww3[vv].attrs['source'] = 'WW3 numerical forecast 3-hourly 0.5 deg resolution'
-        if 'longitude' in ds_ww3:
-            ds_ww3['longitude'].attrs['description'] = 'longitude of the center of level-1B tile from Sentinel-1 WV imagette'
-            ds_ww3['latitude'].attrs['description'] = 'latitude of the center of level-1B tile from Sentinel-1 WV imagette'
+                ds_ww3[vv].attrs[
+                    "source"
+                ] = "WW3 numerical forecast 3-hourly 0.5 deg resolution"
+        if "longitude" in ds_ww3:
+            ds_ww3["longitude"].attrs[
+                "description"
+            ] = "longitude of the center of level-1B tile from Sentinel-1 WV imagette"
+            ds_ww3["latitude"].attrs[
+                "description"
+            ] = "latitude of the center of level-1B tile from Sentinel-1 WV imagette"
         for vv in VARS_SAR_L1B:
             if vv in ds:
                 ds_sar_l1b[vv] = ds[vv]
-                ds_sar_l1b[vv].attrs['source'] = 'SAR Ifremer level-1B processor for WV SLC'
-        ds_sar_l1b['longitude'].attrs['description'] = 'longitude of the center of level-1B tile from Sentinel-1 WV imagette'
-        ds_sar_l1b['latitude'].attrs['description'] = 'latitude of the center of level-1B tile from Sentinel-1 WV imagette'
-        node_ecm = xr.DataTree(name="ecmwf_0100_1h", parent=dtnew, data=ds_ecmwf)
-        node_ww3 = xr.DataTree(name="ww3_global_yearly_3h", parent=dtnew, data=ds_ww3)
-        node_l1b = xr.DataTree(name=GROUP_NAME_SAR, parent=dtnew, data=ds_sar_l1b)
+                ds_sar_l1b[vv].attrs[
+                    "source"
+                ] = "SAR Ifremer level-1B processor for WV SLC"
+        ds_sar_l1b["longitude"].attrs[
+            "description"
+        ] = "longitude of the center of level-1B tile from Sentinel-1 WV imagette"
+        ds_sar_l1b["latitude"].attrs[
+            "description"
+        ] = "latitude of the center of level-1B tile from Sentinel-1 WV imagette"
+        _ = xr.DataTree(name="ecmwf_0100_1h", parent=dtnew, data=ds_ecmwf)
+        _ = xr.DataTree(name="ww3_global_yearly_3h", parent=dtnew, data=ds_ww3)
+        _ = xr.DataTree(name=GROUP_NAME_SAR, parent=dtnew, data=ds_sar_l1b)
         # dt['ecmwf_0100_1h'] = ds_ecmwf
         # dt['ww3_global_yearly_3h'] = ds_ww3
         # dt['sentinel1_wv_l1b'] = ds_sar_l1b
@@ -794,6 +826,8 @@ def save_to_zarr(stacked_ds, outputfile, L1C_version, L1B_version):
     stacked_ds.to_zarr(outputfile, mode="w")
     logging.info("successfully wrote stacked L1C %s", outputfile)
     return outputfile
+
+
 def save_to_netcdf(stackdt, outputfile, L1C_version, L1B_version):
     """
 
@@ -813,7 +847,7 @@ def save_to_netcdf(stackdt, outputfile, L1C_version, L1B_version):
     stackdt.attrs["creation_script"] = os.path.basename(__file__)
     logging.info("start saving to disk")
     # stackdt.to_netcdf(outputfile, engine='h5netcdf',mode="w")
-    stackdt.to_netcdf(outputfile, engine='netcdf4',mode="w")
+    stackdt.to_netcdf(outputfile, engine="netcdf4", mode="w")
     logging.info("successfully wrote stacked L1C %s", outputfile)
     return outputfile
 
@@ -853,7 +887,11 @@ def main():
         required=True,
         help="directory where L1C stacked files will be stored",
     )
-    parser.add_argument('--finalarchive',help='the files are produce in args.outputdir and then moved in args.finalarchive (using mv)',required=True)
+    parser.add_argument(
+        "--finalarchive",
+        help="the files are produce in args.outputdir and then moved in args.finalarchive (using mv)",
+        required=True,
+    )
     parser.add_argument(
         "--dev",
         action="store_true",
@@ -898,7 +936,6 @@ def main():
     if os.path.exists(outputfile) and args.overwrite is False:
         logging.info("%s already exists", outputfile)
     else:
-
         lst_safes_month = get_all_l1c_for_a_month(
             startdate,
             stopdate,
@@ -916,17 +953,19 @@ def main():
             #     L1C_version=vL1C,
             #     L1B_version=vL1B,
             # )
-            outputfile = save_to_netcdf(stackdt=stackdt,
+            outputfile = save_to_netcdf(
+                stackdt=stackdt,
                 outputfile=outputfile,
                 L1C_version=vL1C,
-                L1B_version=vL1B)
+                L1B_version=vL1B,
+            )
         else:
             logging.info("no data available")
     if os.path.exists(outputfile):
-        archive_path = outputfile.replace(args.outputdir,args.finalarchive)
-        if outputfile!=archive_path:
-            logging.info('move file %s to %s',outputfile,archive_path)
-            shutil.move(outputfile,archive_path)
+        archive_path = outputfile.replace(args.outputdir, args.finalarchive)
+        if outputfile != archive_path:
+            logging.info("move file %s to %s", outputfile, archive_path)
+            shutil.move(outputfile, archive_path)
 
     logging.info("peak memory usage: %s Mbytes", get_memory_usage())
     logging.info("done in %1.3f min", (time.time() - t0) / 60.0)

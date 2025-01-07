@@ -1,5 +1,6 @@
-import numpy as np
 import logging
+
+import numpy as np
 
 
 def apply_clockwise_to_trigo(ds):
@@ -12,15 +13,19 @@ def apply_clockwise_to_trigo(ds):
         ds (xarray): xPolarSpectrum
     """
     p = ds.phi.data
-    ds = (ds.assign_coords(phi=np.append(p[0], np.flip(p[1:], axis=-1)))).sortby('phi')
-    if 'convention' in ds.attrs:
-        if ds.attrs['convention'] == 'trigo':
-            ds.attrs['convention'] = 'clockwise'
-        elif ds.attrs['convention'] == 'clockwise':
-            ds.attrs['convention'] = 'trigo'
+    ds = (ds.assign_coords(phi=np.append(p[0], np.flip(p[1:], axis=-1)))).sortby("phi")
+    if "convention" in ds.attrs:
+        if ds.attrs["convention"] == "trigo":
+            ds.attrs["convention"] = "clockwise"
+        elif ds.attrs["convention"] == "clockwise":
+            ds.attrs["convention"] = "trigo"
         else:
-            logging.debug('unknown convention')
+            logging.debug("unknown convention")
             pass
-    if 'wd' in ds.attrs: ds.attrs.update({'wd': -ds.wd})  # wind convention has to be changed too
-    if 'curdir' in ds.attrs: ds.attrs.update({'curdir': -ds.curdir})  # curdir convention has to be changed too
+    if "wd" in ds.attrs:
+        ds.attrs.update({"wd": -ds.wd})  # wind convention has to be changed too
+    if "curdir" in ds.attrs:
+        ds.attrs.update(
+            {"curdir": -ds.curdir}
+        )  # curdir convention has to be changed too
     return ds

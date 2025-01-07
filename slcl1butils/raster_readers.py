@@ -1,6 +1,8 @@
-import xarray as xr
 import datetime
+
 import numpy as np
+import xarray as xr
+
 from slcl1butils.utils import url_get
 
 
@@ -36,8 +38,10 @@ def resource_strftime(resource, **kwargs):
         second=0,
         microsecond=0,
     )
-    if '%(Y+1)' in resource:
-        resource = resource.replace('%(Y+1)',(date+datetime.timedelta(days=366)).strftime('%Y'))
+    if "%(Y+1)" in resource:
+        resource = resource.replace(
+            "%(Y+1)", (date + datetime.timedelta(days=366)).strftime("%Y")
+        )
     return date, url_get(date.strftime(resource))
 
 
@@ -77,7 +81,7 @@ def ecmwf_0100_1h(fname, use_dask=True):
 
     ecmwf_ds.rio.write_crs("EPSG:4326", inplace=True)
 
-    if use_dask == False:
+    if use_dask is False:
         for var in ecmwf_ds:
             ecmwf_ds[var] = ecmwf_ds[var].compute()
 
@@ -119,7 +123,6 @@ def ecmwf_0125_1h(fname):
 
 
 def ww3_global_yearly_3h(filename, date):
-
     str_time = datetime.datetime.strftime(date, "%Y-%m-%d-T%H:%M:%S.000000000")
 
     ds = xr.open_dataset(filename)
@@ -176,7 +179,7 @@ def hwrf_0015_3h(fname, **kwargs):
     hwrf_ds = xr.open_dataset(fname)
     try:
         hwrf_ds = hwrf_ds.sel(dim_0=kwargs["date"])[["u", "v", "elon", "nlat"]]
-    except Exception as e:
+    except IndexError:
         raise ValueError("date '%s' can't be find in %s " % (kwargs["date"], fname))
 
     time_datetime = datetime.datetime.utcfromtimestamp(

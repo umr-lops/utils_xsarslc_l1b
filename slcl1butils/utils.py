@@ -1,29 +1,21 @@
-#!/bin/env python
-import pdb
-import warnings
-import os
-import slcl1butils
-import numpy as np
 import copy
-import logging
-import zipfile
-import fsspec
 import datetime
-import xarray as xr
+import logging
+import os
+import warnings
+import zipfile
+
 import aiohttp
+import fsspec
+import numpy as np
+import xarray as xr
+
+import slcl1butils
 from slcl1butils.get_config import get_conf
 
 config = get_conf()
 logger = logging.getLogger("xsar.utils")
 logger.addHandler(logging.NullHandler())
-
-mem_monitor = True
-
-try:
-    from psutil import Process
-except ImportError:
-    logger.warning("psutil module not found. Disabling memory monitor")
-    mem_monitor = False
 
 
 def netcdf_compliant(dataset):
@@ -141,7 +133,7 @@ def get_memory_usage():
         memory_used_go = (
             resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0 / 1000.0
         )
-    except:  # on windows resource is not usable
+    except ImportError:  # on windows resource is not usable
         import psutil
 
         memory_used_go = psutil.virtual_memory().used / 1000 / 1000 / 1000.0
@@ -185,8 +177,15 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     else:
         pathout_root = outputdir
     # pathout = os.path.join(pathout_root, version, safe_file)
-    safe_start_date = datetime.datetime.strptime(safe_file.split('_')[5],'%Y%m%dT%H%M%S')
-    pathout = os.path.join(pathout_root, safe_start_date.strftime('%Y'),safe_start_date.strftime('%j'), safe_file)
+    safe_start_date = datetime.datetime.strptime(
+        safe_file.split("_")[5], "%Y%m%dT%H%M%S"
+    )
+    pathout = os.path.join(
+        pathout_root,
+        safe_start_date.strftime("%Y"),
+        safe_start_date.strftime("%j"),
+        safe_file,
+    )
 
     # Output filename
     l1c_full_path = os.path.join(
@@ -204,23 +203,23 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
         basesafe = basesafe.replace(lastpart, version.upper() + ".SAFE")
     l1c_full_path = l1c_full_path.replace(basesafe0, basesafe)
 
-    #suffix measurement
+    # suffix measurement
     measu_base = os.path.basename(l1c_full_path)
-    if 's1' in measu_base[0:2]:
-        measu_base = 'l1c-'+measu_base
-    elif 'l1b' in measu_base[0:3]:
-        measu_base = measu_base.replace('l1b','l1c')
-    measu_base = measu_base.replace('slc','xsp') #security old products
-    measu_base = measu_base.replace('L1C_xspec_IFR_','') # security
-    l1c_full_path = l1c_full_path.replace(os.path.basename(l1c_full_path),measu_base)
+    if "s1" in measu_base[0:2]:
+        measu_base = "l1c-" + measu_base
+    elif "l1b" in measu_base[0:3]:
+        measu_base = measu_base.replace("l1b", "l1c")
+    measu_base = measu_base.replace("slc", "xsp")  # security old products
+    measu_base = measu_base.replace("L1C_xspec_IFR_", "")  # security
+    l1c_full_path = l1c_full_path.replace(os.path.basename(l1c_full_path), measu_base)
 
     # lastpiece = l1c_full_path.split("_")[-1]
-    if '_' in os.path.basename(l1c_full_path):
-        lastpiece = '_'+l1c_full_path.split("_")[-1]
-    elif '-' in os.path.basename(l1c_full_path):
+    if "_" in os.path.basename(l1c_full_path):
+        lastpiece = "_" + l1c_full_path.split("_")[-1]
+    elif "-" in os.path.basename(l1c_full_path):
         # lastpiece = l1c_full_path[-6:]
-        lastpiece = '-'+l1c_full_path.split("-")[-1]
-    l1c_full_path = l1c_full_path.replace(lastpiece, '-'+version.lower() + ".nc")
+        lastpiece = "-" + l1c_full_path.split("-")[-1]
+    l1c_full_path = l1c_full_path.replace(lastpiece, "-" + version.lower() + ".nc")
 
     logging.debug("File out: %s ", l1c_full_path)
     if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
