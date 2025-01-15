@@ -2,6 +2,7 @@ import datetime
 import glob
 import logging
 import os
+import pdb
 
 import numpy as np
 import xarray as xr
@@ -14,54 +15,87 @@ from slcl1butils.legacy_ocean.ocean.xspectrum import from_ww3
 from slcl1butils.raster_readers import resource_strftime
 from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
 from slcl1butils.utils import xndindex
-COLOC_LIMIT_SPACE = 100 # km
-COLOC_LIMIT_TIME = 3 # hours
+
+COLOC_LIMIT_SPACE = 100  # km
+COLOC_LIMIT_TIME = 3  # hours
+
 
 def find_closest_ww3(ww3_path, lon, lat, time):
     """
-    Find spatio-temporal closest point in ww3 file
+    Find spatio-temporal closest index in ww3 file
 
     Args:
         ww3_path (str): path to the WW3 file
         lon (float): longitude of interest
         lat (float): latitude of interest
-        time (datetime or tuple of int): Tuple of the form (year, month, day, hour, minute, second)
+        time (datetime.datetime or tuple of int): Tuple of the form (year, month, day, hour, minute, second)
 
 
     Returns:
-        (int): time indice of spatio-temporal closest point
+        (xr.DataArray): time index of spatio-temporal closest point in the WW3 file
     """
-    from datetime import datetime
-    import numpy as np
-    import xarray as xr
     ww3spec = xr.open_dataset(ww3_path)
-    mytime = np.datetime64(time) if type(time)==datetime else np.datetime64(datetime(*time))
-    time_dist = np.abs(ww3spec.time-mytime)
+    mytime = (
+        np.datetime64(time)
+        if type(time) == datetime.datetime
+        else np.datetime64(datetime.datetime(*time))
+    )
+    time_dist = np.abs(ww3spec.time - mytime)
 
-    isel = np.where(time_dist==time_dist.min())
-    spatial_dist = haversine(lon, lat, ww3spec[{'time':isel[0]}].longitude, ww3spec[{'time':isel[0]}].latitude)
+    isel = np.where(time_dist == time_dist.min())
+    spatial_dist = haversine(
+        lon,
+        lat,
+        ww3spec[{"time": isel[0]}].longitude,
+        ww3spec[{"time": isel[0]}].latitude,
+    )
     #  logging.debug(spatial_dist)
     myind = isel[0][np.argmin(spatial_dist.data)]
-    time_dist_minutes = (ww3spec[{'time': myind}].time - mytime).data / (1e9 * 60)
-    logging.debug('Wave Watch III closest point @ {} km and {} minutes'.format(np.round(spatial_dist,2),
-                                                            time_dist_minutes))
-    if abs(time_dist_minutes)>COLOC_LIMIT_TIME*60 or spatial_dist>COLOC_LIMIT_SPACE:
-        logging.debug('closest in time then in space is beyond the limits -> No ww3 spectra will be associated ')
-        myind = None
-
-    selection = xr.DataArray(myind,attributes={'method':'closest in time then in space',
-                                               'limits of selection in space (km)':COLOC_LIMIT_SPACE,
-                                               'limit of selection in time (hours)':COLOC_LIMIT_TIME,
-                                               'delta time (minutes)':time_dist_minutes,
-                                               'delta space (m)':spatial_dist,
-                                               'longitude WW3 spectra':ww3spec[{'time':isel[0]}].longitude.data,
-                                               'latitude WW3 spectra':ww3spec[{'time':isel[0]}].latitude.data,
-                                               'date WW3 spectra':ww3spec[{'time': myind}].time.data,
-                                               'file WW3 spectra':ww3_path
-                                               },
-                             name='index of the WW3 spectra selected'
-                             )
-
+    time_dist_minutes = (ww3spec[{"time": myind}].time - mytime).data / (1e9 * 60)
+    logging.debug(
+        "Wave Watch III closest point @ {} km and {} minutes".format(
+            np.round(spatial_dist, 2), time_dist_minutes
+        )
+    )
+    if (
+        abs(time_dist_minutes) > COLOC_LIMIT_TIME * 60
+        or spatial_dist > COLOC_LIMIT_SPACE
+    ):
+        logging.debug(
+            "closest in time then in space is beyond the limits -> No ww3 spectra will be associated "
+        )
+        myind = np.nan
+        selection = xr.DataArray(
+            [myind],
+            attrs={
+                "method": "closest in time then in space",
+                "limit of selection in space (km)": COLOC_LIMIT_SPACE,
+                "limit of selection in time (hours)": COLOC_LIMIT_TIME,
+                "delta time (minutes)": "beyond limit",
+                "delta space (m)": "beyond limit",
+                "longitude WW3 spectra": None,
+                "latitude WW3 spectra": None,
+                "date WW3 spectra": None,
+                "file WW3 spectra": ww3_path,
+            },
+            name="index of the WW3 spectra selected (None=no WW3 spectra found)",
+        )
+    else:
+        selection = xr.DataArray(
+            [myind],
+            attrs={
+                "method": "closest in time then in space",
+                "limit of selection in space (km)": COLOC_LIMIT_SPACE,
+                "limit of selection in time (hours)": COLOC_LIMIT_TIME,
+                "delta time (minutes)": time_dist_minutes,
+                "delta space (m)": spatial_dist,
+                "longitude WW3 spectra": ww3spec[{"time": isel[0]}].longitude.data,
+                "latitude WW3 spectra": ww3spec[{"time": isel[0]}].latitude.data,
+                "date WW3 spectra": ww3spec[{"time": myind}].time.data,
+                "file WW3 spectra": ww3_path,
+            },
+            name="index of the WW3 spectra selected (None=no WW3 spectra found)",
+        )
 
     return selection
 
@@ -157,30 +191,42 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
                     indiceww3spectra = find_closest_ww3(
                         ww3_path=pathww3sp, lon=lonsar, lat=latsar, time=start_date_dt
                     )
-                    # add the raw  EFTH(f,dir) spectra from WW3
-                    rawspww3 = (
-                        dsww3raw["efth"]
-                        .isel(time=indiceww3spectra)
-                        .rename("ww3EFTHraw")
-                    )
-                    rawspww3.attrs["description"] = "raw EFTH(f,dir) spectra"
-                    ds_ww3_cartesian = ds_ww3_cartesian.swap_dims(
-                        {"kx": "k_rg", "ky": "k_az"}
-                    ).T
-                    rawspww3 = rawspww3.assign_coords(i)
-                    rawspww3 = rawspww3.expand_dims(["tile_line", "tile_sample"])
-                    # rawspww3 = rawspww3.expand_dims(["burst", "tile_line", "tile_sample"])
-                    ds_ww3_cartesian = ds_ww3_cartesian.assign_coords(i)
-                    ds_ww3_cartesian = ds_ww3_cartesian.expand_dims(
-                        ["tile_line", "tile_sample"]
-                    )
-                    # ds_ww3_cartesian = ds_ww3_cartesian.expand_dims(["burst", "tile_line", "tile_sample"])
-                    list_ww3_cart_sp.append(ds_ww3_cartesian)
-                    list_ww3_efth_sp.append(rawspww3)
+                    pdb.set_trace()
+                    if np.isfinite(indiceww3spectra.data[0]):
+                        # add the raw  EFTH(f,dir) spectra from WW3
+                        rawspww3 = (
+                            dsww3raw["efth"]
+                            .isel(time=indiceww3spectra.data[0])
+                            .rename("ww3EFTHraw")
+                        )
+                        rawspww3.attrs[
+                            "description"
+                        ] = "raw EFTH(f,dir) WAVEWATCH III wave height spectra"
+                        for att in indiceww3spectra.attrs:
+                            logging.debug(
+                                "copy coloc atttribute : %s %s to annotated spectra",
+                                att,
+                                indiceww3spectra[att],
+                            )
+                            rawspww3.attrs[att] = indiceww3spectra[att]
+                        ds_ww3_cartesian = ds_ww3_cartesian.swap_dims(
+                            {"kx": "k_rg", "ky": "k_az"}
+                        ).T
+                        rawspww3 = rawspww3.assign_coords(i)
+                        rawspww3 = rawspww3.expand_dims(["tile_line", "tile_sample"])
+                        # rawspww3 = rawspww3.expand_dims(["burst", "tile_line", "tile_sample"])
+                        ds_ww3_cartesian = ds_ww3_cartesian.assign_coords(i)
+                        ds_ww3_cartesian = ds_ww3_cartesian.expand_dims(
+                            ["tile_line", "tile_sample"]
+                        )
+                        # ds_ww3_cartesian = ds_ww3_cartesian.expand_dims(["burst", "tile_line", "tile_sample"])
+                        list_ww3_cart_sp.append(ds_ww3_cartesian)
+                        list_ww3_efth_sp.append(rawspww3)
+                        flag_ww3spectra_added = True
                 ds_ww3_cartesian_merged = xr.merge(list_ww3_cart_sp)
                 ds_ww3_efth_merged = xr.merge(list_ww3_efth_sp)
                 dsar = xr.merge([dsar, ds_ww3_cartesian_merged, ds_ww3_efth_merged])
-                flag_ww3spectra_added = True
+
         if xspeckind == "intra":
             dsar = dsar.drop_vars(["xspectra_2tau_Re", "xspectra_2tau_Im"])
         elif xspeckind == "inter":
