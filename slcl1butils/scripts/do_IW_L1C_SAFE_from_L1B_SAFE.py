@@ -1,3 +1,4 @@
+import pdb
 import argparse
 import logging
 import os
@@ -284,7 +285,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     raster_bb_ds = raster_cropping_in_polygon_bounding_box(
         polygons["swath"][0], raster_ds
     )
-
+    raster_bb_ds.attrs['name'] = ancillary['name']
     # Loop on the grid in the product
     burst_types = ["intra", "inter"]
     for burst_type in burst_types:
