@@ -311,7 +311,7 @@ def from_xPolarSpectrum(ds, **kwargs):
     myspec.attrs.update({'dkx':dkx, 'dky':dky})
     myspec = myspec.where(np.sqrt(myspec.kx**2+myspec.ky**2)>min(ds.k).data, other=0.)# spectrum at wavenumbers smaller than the minimum one of the polar spectrum are set to zero
     myspec.attrs.pop('dphi', None)
-    return myspec.drop(('k','phi','dk'))
+    return myspec.drop_vars(('k','phi','dk'))
 
 
 #  ******************************************************************************************************************************************************************
