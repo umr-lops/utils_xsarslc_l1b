@@ -76,7 +76,10 @@ def coloc_tiles_from_l1bgroup_with_raster(l1b_ds, raster_bb_ds, apply_merging=Tr
             projected_field = upscaled_da.interp(
                 x=lonsar, y=latsar, assume_sorted=False
             ).drop_vars(["x", "y"])
-            projected_field.attrs['source'] = raster_bb_ds.attrs['name']
+            if 'name' in raster_bb_ds.attrs:
+                projected_field.attrs['source'] = raster_bb_ds.attrs['name']
+            else:
+                projected_field.attrs['source'] = 'unknown'
             mapped_ds_list.append(projected_field)
     raster_mapped = xr.merge(mapped_ds_list)
 

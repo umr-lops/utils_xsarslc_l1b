@@ -22,12 +22,13 @@ field_ww3_with_nan = copy.copy(field_ww3)
 field_ww3_with_nan[1,2] = np.nan
 xa_ww3 = xr.DataArray(field_ww3, dims=('x','y'),
                                   coords={'y':np.linspace(20,50,N),
-                                          'x':np.linspace(100,150,M)})
+                                          'x':np.linspace(100,150,M)},
+                                )
 xa_ww3_with_nan = xr.DataArray(field_ww3, dims=('x','y'),
                                   coords={'y':np.linspace(20,50,N),
                                           'x':np.linspace(100,150,M)})
-ds_ww3 = xr.Dataset({'hs':xa_ww3,'wl':xa_ww3})
-ds_ww3_with_nan = xr.Dataset({'hs':xa_ww3_with_nan,'wl':xa_ww3_with_nan})
+ds_ww3 = xr.Dataset({'hs':xa_ww3,'wl':xa_ww3},attrs={'name':'xa_ww3'})
+ds_ww3_with_nan = xr.Dataset({'hs':xa_ww3_with_nan,'wl':xa_ww3_with_nan},attrs={'name':'xa_ww3'})
 # ww3 = xr.DataArray(np.random.rand(N,M), dims=('lons','lats'), coords={'lats':np.linspace(20,50,N), 'lons':np.linspace(100,150,M)})
 # ww3
 
