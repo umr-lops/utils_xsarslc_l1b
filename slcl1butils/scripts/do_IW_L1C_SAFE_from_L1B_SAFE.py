@@ -300,6 +300,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             # ds_intra_list.append(_ds_intra)
             # Merging the datasets
             ds_intra = xr.merge([ds_intra, _ds_intra])
+            ds_intra.attrs[ancillary["name"] + "_pattern"] = filename
         else:
             # l1b_ds_inter = xr.open_dataset(_file,group=burst_type+'burst')
             # _ds = coloc_tiles_from_l1bgroup_with_raster(l1b_ds_inter, raster_bb_ds, apply_merging=False)
@@ -310,6 +311,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             # ds_inter_list.append(_ds_inter)
             # Merging the datasets
             ds_inter = xr.merge([ds_inter, _ds_inter])
+            ds_inter.attrs[ancillary["name"] + "_pattern"] = filename
     logging.debug("ancillary fields added")
     return ds_intra, ds_inter, ancillary_fields_added
 
