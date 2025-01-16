@@ -1,4 +1,5 @@
-from slcl1butils.coloc.coloc_IW_WW3spectra import find_closest_ww3
+from slcl1butils.coloc.coloc_IW_WW3spectra import check_colocation
+from slcl1butils.legacy_ocean.ocean.xspectrum import from_ww3
 import pytest
 import os
 import slcl1butils
@@ -38,7 +39,26 @@ for case in cases:
     tuple(params_list),
 )
 def test_finder(lon,lat,datesar,expected):
-    da_index = find_closest_ww3(ww3_path=ww3spectra_hindcast_file,lon=lon,lat=lat,time=datesar)
+    dk = (0.001795349, 0.0018014804)
+    kmax = (0.8114978075027466, 0.045037008821964264)
+    rotate = 79.63082299999999
+    ds_ww3_cartesian = from_ww3(
+                ww3spectra_hindcast_file,
+                dk=dk,
+                kmax=kmax,
+                strict="dk",
+                rotate=rotate,
+                clockwise_to_trigo=True,
+                lon=lon,
+                lat=lat,
+                time=datesar,
+            )  # TODO use sensingTime
+    ds_ww3_cartesian.attrs["source"] = "ww3"
+    ds_ww3_cartesian.attrs[
+        "description"
+    ] = "WW3spectra_EFTHraw resampled on SAR cartesian grid"
+    ds_ww3_cartesian = ds_ww3_cartesian.rename("WW3spectra_EFTHcart")
+    da_index = check_colocation(cartesianspWW3=ds_ww3_cartesian,lon=lon,lat=lat,time=datesar)
     actual_index = da_index['WW3spectra_index'].data
     # print('da_index',da_index)
     assert actual_index==expected
