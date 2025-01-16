@@ -294,7 +294,9 @@ def from_ww3(ds, *, station_index=None, time_index=None, rotate=0., shortWavesFi
     myspec = myspec.assign_coords(dk=dk)
     # myspec.attrs.update({'dk':dk, 'dphi':dphi})
     myspec.attrs.update({'dphi':dphi})
-    myspec.attrs.update({'longitude':specWW3[ww3_kwargs]['longitude'].data, 'latitude':specWW3[ww3_kwargs]['latitude'].data})
+    file_path = specWW3.encoding.get('source', None)
+    myspec.attrs.update({'pathWW3':file_path})
+    myspec.attrs.update({'longitude':specWW3[ww3_kwargs]['longitude'].data, 'latitude':specWW3[ww3_kwargs]['latitude'].data,'time_index':time_index})
 
     try:
         myspec.attrs.update({'wd':np.radians(specWW3[ww3_kwargs].wnddir.data+180), 'ws':specWW3[ww3_kwargs].wnd.data})# wnddir (in WW3 files) is the direction the wind is coming from
@@ -507,7 +509,12 @@ def find_closest_ww3(ww3_path, lon, lat, time):
     import numpy as np
     import xarray as xr
     ww3spec = xr.open_dataset(ww3_path)
-    mytime = np.datetime64(time) if type(time)==datetime else np.datetime64(datetime(*time))
+    if type(time)==datetime:
+        mytime = np.datetime64(time)
+    elif isinstance(time,np.datetime64):
+        mytime = time
+    else:
+        mytime = np.datetime64(datetime(*time))
     time_dist = np.abs(ww3spec.time-mytime)
     isel = np.where(time_dist==time_dist.min())
     spatial_dist = haversine(lon, lat, ww3spec[{'time':isel[0]}].longitude, ww3spec[{'time':isel[0]}].latitude)
