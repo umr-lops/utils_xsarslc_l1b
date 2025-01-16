@@ -20,44 +20,51 @@ COLOC_LIMIT_TIME = 3  # hours
 INDEX_WW3_FILL_VALUE = -999
 
 
-def find_closest_ww3(ww3_path, lon, lat, time):
+def check_colocation(cartesianspWW3, lon, lat, time):
     """
-    Find spatio-temporal closest index in ww3 file
+    from information associated to the closest WW3 spectra found, check whether it is a usable co-location or not.
+    and add co-location score information
 
     Args:
-        ww3_path (str): path to the WW3 file
-        lon (float): longitude of interest
-        lat (float): latitude of interest
-        time (datetime.datetime or tuple of int): Tuple of the form (year, month, day, hour, minute, second)
+        cartesianspWW3 (xr.DataArray): closest cartesian wave spectra WW3 found (could be too far for colocation)
+        lon (float): longitude of interest (eg SAR)
+        lat (float): latitude of interest (eg SAR)
+        time (datetime.datetime or tuple of int): Tuple of the form (year, month, day, hour, minute, second) (eg SAR)
 
 
     Returns:
         (xr.DataArray): time index of spatio-temporal closest point in the WW3 file
     """
     coloc_ds = xr.Dataset()
-    ww3spec = xr.open_dataset(ww3_path)
     mytime = (
         np.datetime64(time)
         if type(time) == datetime.datetime
         else np.datetime64(datetime.datetime(*time))
     )
-    time_dist = np.abs(ww3spec.time - mytime)
+    # time_dist = np.abs(cartesianspWW3.time - mytime)
 
-    isel = np.where(time_dist == time_dist.min())
-    spatial_dist = haversine(
+    # isel = np.where(time_dist == time_dist.min())
+    closest_dist_in_space = haversine(
         lon,
         lat,
-        ww3spec[{"time": isel[0]}].longitude,
-        ww3spec[{"time": isel[0]}].latitude,
+        cartesianspWW3.attrs["longitude"],
+        cartesianspWW3.attrs["latitude"],
     )
+    # spatial_dist = haversine(
+    #     lon,
+    #     lat,
+    #     ww3spds[{"time": isel[0]}].longitude,
+    #     ww3spds[{"time": isel[0]}].latitude,
+    # )
     #  logging.debug(spatial_dist)
-    relative_index = np.argmin(spatial_dist.data)
-    absolute_index = isel[0][relative_index]
-    closest_dist_in_space = spatial_dist[relative_index].data
+    # relative_index = np.argmin(spatial_dist.data)
+    # absolute_index = isel[0][relative_index]
+    # closest_dist_in_space = spatial_dist[relative_index].data
     # time_dist_minutes = (ww3spec[{"time": absolute_index}].time - mytime).data / (1e9 * 60)
-    time_dist_minutes = (
-        ww3spec[{"time": absolute_index}].time - mytime
-    ) / np.timedelta64(1, "m")
+    # time_dist_minutes = (
+    #     ww3spds[{"time": absolute_index}].time - mytime
+    # ) / np.timedelta64(1, "m")
+    time_dist_minutes = (cartesianspWW3.time - mytime) / np.timedelta64(1, "m")
     logging.debug(
         "Wave Watch III closest point @ {} km and {} minutes".format(
             closest_dist_in_space, time_dist_minutes
@@ -84,12 +91,14 @@ def find_closest_ww3(ww3_path, lon, lat, time):
             },
         )
     else:
-        ww3_lon = ww3spec[{"time": isel[0]}].longitude.data[relative_index]
-        ww3_lat = ww3spec[{"time": isel[0]}].latitude.data[relative_index]
-        ww3_date = ww3spec[{"time": absolute_index}].time
-
+        # ww3_lon = ww3spds[{"time": isel[0]}].longitude.data[relative_index]
+        # ww3_lat = ww3spds[{"time": isel[0]}].latitude.data[relative_index]
+        # ww3_date = ww3spds[{"time": absolute_index}].time
+        ww3_lon = cartesianspWW3.attrs["longitude"]
+        ww3_lat = cartesianspWW3.attrs["latitude"]
+        ww3_date = cartesianspWW3.time
         selection = xr.DataArray(
-            absolute_index,
+            cartesianspWW3.attrs["time_index"],
             attrs={
                 "method": "closest in time then in space",
                 "limit_of_selection_in_space": "%f km" % COLOC_LIMIT_SPACE,
@@ -120,7 +129,8 @@ def find_closest_ww3(ww3_path, lon, lat, time):
         ww3_date, attrs={"description": "time associated to colocated WW3 spectra"}
     )
     coloc_ds["WW3spectra_path"] = xr.DataArray(
-        ww3_path, attrs={"description": "file path used to colocate WW3 spectra"}
+        cartesianspWW3.attrs["pathWW3"],
+        attrs={"description": "file path used to colocate WW3 spectra"},
     )
     return coloc_ds
 
@@ -195,6 +205,7 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
                 for i in xndindex(gridsar):
                     lonsar = dsar["longitude"][i].values
                     latsar = dsar["latitude"][i].values
+                    sensing_time = dsar["sensing_time"][i].values
                     heading = dsar["ground_heading"][i].values
                     logging.debug("heading %s", heading)
                     logging.debug("timesar :%s", start_date_dt)
@@ -211,22 +222,21 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
                         clockwise_to_trigo=True,
                         lon=lonsar,
                         lat=latsar,
-                        time=start_date_dt,
-                    )  # TODO use sensingTime
+                        time=sensing_time,
+                    )
                     ds_ww3_cartesian.attrs["source"] = "ww3"
                     ds_ww3_cartesian.attrs[
                         "description"
                     ] = "WW3spectra_EFTHraw resampled on SAR cartesian grid"
                     ds_ww3_cartesian = ds_ww3_cartesian.rename("WW3spectra_EFTHcart")
+                    colocww3sp_ds = check_colocation(
+                        cartesianspWW3=ds_ww3_cartesian,
+                        lon=lonsar,
+                        lat=latsar,
+                        time=start_date_dt,
+                    )
                     del ds_ww3_cartesian.attrs["longitude"]
                     del ds_ww3_cartesian.attrs["latitude"]
-                    # TODO: check kx ky names to be same as the one from intra burst ds
-                    # there are currently 2 find_closest_ww3 methods in slcl1butils,
-                    # they give the same index except that in the method below
-                    # there is a security to avoid too large time-space association
-                    colocww3sp_ds = find_closest_ww3(
-                        ww3_path=pathww3sp, lon=lonsar, lat=latsar, time=start_date_dt
-                    )
                     if colocww3sp_ds["WW3spectra_index"].data != INDEX_WW3_FILL_VALUE:
                         # add the raw  EFTH(f,dir) spectra from WW3
                         rawspww3 = (
