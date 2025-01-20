@@ -110,12 +110,12 @@ def check_colocation(cartesianspWW3, lon, lat, time):
     coloc_ds["WW3spectra_index"] = selection
     coloc_ds["WW3spectra_delta_time"] = xr.DataArray(
         time_dist_minutes,
-        attrs={"description": "delta time (WW3-SAR) in minutes", "units": "minutes"},
+        attrs={"description": "temporal distance (WW3-SAR) in minutes", "units": "minutes"},
     )
     coloc_ds["WW3spectra_delta_space"] = xr.DataArray(
         closest_dist_in_space,
         attrs={
-            "description": "delta space between SAR tile center and WW3 spectra grid point (km)",
+            "description": "spatial distance between SAR tile center and WW3 spectra grid point (km)",
             "units": "kilometer",
         },
     )
