@@ -1,3 +1,4 @@
+import pdb
 import argparse
 import logging
 import os
@@ -284,7 +285,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     raster_bb_ds = raster_cropping_in_polygon_bounding_box(
         polygons["swath"][0], raster_ds
     )
-
+    raster_bb_ds.attrs['name'] = ancillary['name']
     # Loop on the grid in the product
     burst_types = ["intra", "inter"]
     for burst_type in burst_types:
@@ -300,6 +301,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             # ds_intra_list.append(_ds_intra)
             # Merging the datasets
             ds_intra = xr.merge([ds_intra, _ds_intra])
+            ds_intra.attrs[ancillary["name"] + "_pattern"] = filename
         else:
             # l1b_ds_inter = xr.open_dataset(_file,group=burst_type+'burst')
             # _ds = coloc_tiles_from_l1bgroup_with_raster(l1b_ds_inter, raster_bb_ds, apply_merging=False)
@@ -310,6 +312,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             # ds_inter_list.append(_ds_inter)
             # Merging the datasets
             ds_inter = xr.merge([ds_inter, _ds_inter])
+            ds_inter.attrs[ancillary["name"] + "_pattern"] = filename
     logging.debug("ancillary fields added")
     return ds_intra, ds_inter, ancillary_fields_added
 
