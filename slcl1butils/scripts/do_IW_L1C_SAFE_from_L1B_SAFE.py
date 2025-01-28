@@ -213,13 +213,19 @@ def enrich_onesubswath_l1b(
                 ancillary_list[ancillary_name], ds_intra, ds_inter
             )
             flag_ancillaries[ancillary_name] = ancillary_fields_added
-    if "ww3hindcast_spectra" in ancillary_list:
+    if "ww3hindcast_spectra" in ancillary_list or 'ww3CCIseastate_spectra' in ancillary_list:
+        idx = None
+        for uui,uu in enumerate(ancillary_list):
+            if 'spectra' in uu:
+                idx = uu  
+        ww3spectra_matching_name = ancillary_list[idx]['name']
+        logging.info('the product used to add wave spectra is: %s',ww3spectra_matching_name)
         (
             ds_intra,
             flag_ww3spectra_added,
             flag_ww3spectra_found,
         ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(
-            dsar=ds_intra, xspeckind="intra"
+            dsar=ds_intra, xspeckind="intra",nameWW3sp_product=ww3spectra_matching_name
         )
         flag_ancillaries["ww3spectra_intra"] = flag_ww3spectra_added
         (
@@ -227,7 +233,7 @@ def enrich_onesubswath_l1b(
             flag_ww3spectra_added,
             flag_ww3spectra_found,
         ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(
-            dsar=ds_inter, xspeckind="inter"
+            dsar=ds_inter, xspeckind="inter",nameWW3sp_product=ww3spectra_matching_name
         )
         flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
     return ds_intra, ds_inter, flag_ancillaries
@@ -271,7 +277,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
     elif ancillary["name"] == "ww3hindcast_field":
         raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
-    elif ancillary["name"] == "ww3hindcast_spectra":
+    elif ancillary["name"] in ["ww3hindcast_spectra","ww3CCIseastate_spectra"]:
         pass  # nothing to do here, there is a specific method called later in the code.
         return ds_intra, ds_inter, ancillary_fields_added
     else:
@@ -428,9 +434,10 @@ def main():
         "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
     }
     if args.ww3spectra:
-        ancillary_list["ww3hindcast_spectra"] = conf["auxilliary_dataset"][
-            "ww3hindcast_spectra"
-        ]
+        #ancillary_list["ww3hindcast_spectra"] = conf["auxilliary_dataset"][
+        #    "ww3hindcast_spectra"
+        #]
+        ancillary_list["ww3CCIseastate_spectra"] = conf["auxilliary_dataset"]["ww3CCIseastate_spectra"]
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
         version=args.version,

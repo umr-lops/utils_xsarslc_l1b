@@ -135,12 +135,13 @@ def check_colocation(cartesianspWW3, lon, lat, time):
     return coloc_ds
 
 
-def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
+def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind, nameWW3sp_product):
     """
 
     Args:
         dsar: xarray.core.Dataset IW Level-1B IFREMER dataset
         xspeckind: str inter or intra
+        nameWW3sp_product: str example "ww3CCIseastate_spectra"
     Returns:
 
     """
@@ -149,7 +150,7 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
     start_date_dt = datetime.datetime.strptime(
         dsar.attrs["start_date"], "%Y-%m-%d %H:%M:%S.%f"
     )
-    pathww3sp = get_ww3HINDCAST_TRCKspectra_path_from_date(sar_date=start_date_dt)
+    pathww3sp = get_ww3_path_from_date(sar_date=start_date_dt,nameWW3sp_product=nameWW3sp_product)
     gridsar = {
         d: k
         for d, k in dsar.sizes.items()
@@ -296,11 +297,13 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind):
     return dsar, flag_ww3spectra_added, flag_ww3spectra_found
 
 
-def get_ww3HINDCAST_TRCKspectra_path_from_date(sar_date):
+def get_ww3_path_from_date(sar_date,nameWW3sp_product):
     """
 
     Args:
         sar_date: (datetime)
+        nameWW3sp_product : (str) eg ww3CCIseastate_spectra
+
 
     Returns:
         filename (str): path of the TRCK WW3 HINDCAST corresponding to the
@@ -309,10 +312,17 @@ def get_ww3HINDCAST_TRCKspectra_path_from_date(sar_date):
 
     filename = None
     conf = get_conf()
-    pattern = conf["ww3hindcast_track_pattern"].replace(
+    if 'ww3handcast_track_pattern' in nameWW3sp_product:
+       pattern = conf["ww3hindcast_track_pattern"].replace(
         "LOPS_WW3-GLOB-30M_*_trck.nc",
         "LOPS_WW3-GLOB-30M_" + sar_date.strftime("%Y%m") + "_trck.nc",
-    )
+       )
+    elif 'ww3CCIseastate_spectra' in nameWW3sp_product:
+        pattern = conf['auxilliary_dataset'][nameWW3sp_product]['pattern'].replace('%Y/',sar_date.strftime("%Y/")).replace('%Y%m',sar_date.strftime("%Y%m"))
+
+    else:
+        raise ValueError('nameWW3sp_product: not handled : %s'%nameWW3sp_product)
+    logging.info('pattern for spectra : %s',pattern)
     datefound, pattern2 = resource_strftime(pattern, step=0.5, date=sar_date)
     filenames = glob.glob(pattern2)
 
