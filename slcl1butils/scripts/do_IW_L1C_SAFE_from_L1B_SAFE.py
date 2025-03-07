@@ -275,7 +275,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         raster_ds = ecmwf_0100_1h(filename)
     elif ancillary["name"] == "ww3_global_yearly_3h":
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
-    elif ancillary["name"] == "ww3hindcast_field":
+    elif ancillary["name"] in ["ww3hindcast_field",'ww3_global_cciseastate']:
         raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
     elif ancillary["name"] in ["ww3hindcast_spectra","ww3CCIseastate_spectra"]:
         pass  # nothing to do here, there is a specific method called later in the code.
@@ -431,7 +431,8 @@ def main():
     logging.info("outputdir will be: %s", args.outputdir)
     ancillary_list = {
         "ecmwf_0100_1h": conf["auxilliary_dataset"]["ecmwf_0100_1h"],
-        "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
+        # "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
+        "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
     }
     if args.ww3spectra:
         #ancillary_list["ww3hindcast_spectra"] = conf["auxilliary_dataset"][
