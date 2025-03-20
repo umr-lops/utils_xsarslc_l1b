@@ -46,7 +46,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
     """
 
     Args:
-        full_safe_file: str (e.g. /path/to/l1b-ifremer-dataset/..SAFE)
+        full_safe_file: str (e.g. /path/to/l1b-ifremer-dataset/..SAFE.nc)
         version: str version of the product to generate
         outputdir: str where to store l1c netcdf files
         colocat: bool
@@ -59,78 +59,84 @@ def do_L1C_SAFE_from_L1B_SAFE(
     """
 
     # Ancillary data to be colocated
-    ancillary_ecmwf = {}
-    ancillary_ecmwf["resource"] = conf["ecmwf0.1_pattern"]
-    ancillary_ecmwf["step"] = 1
-    ancillary_ecmwf["name"] = "ecmwf_0100_1h"
-
-    ancillary_ww3 = {}
-    ancillary_ww3["resource"] = conf["ww3_pattern"]
-    ancillary_ww3["step"] = 3
-    ancillary_ww3["name"] = "ww3_global_yearly_3h"
-
+    # ancillary_ecmwf = {}
+    # ancillary_ecmwf["resource"] = conf["ecmwf0.1_pattern"]
+    # ancillary_ecmwf["step"] = 1
+    # ancillary_ecmwf["name"] = "ecmwf_0100_1h"
+    #
+    # ancillary_ww3 = {}
+    # ancillary_ww3["resource"] = conf["ww3_pattern"]
+    # ancillary_ww3["step"] = 3
+    # ancillary_ww3["name"] = "ww3_global_yearly_3h"
+    # "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
+    ancillary_list = {
+        "ecmwf_0100_1h": conf["auxilliary_dataset"]["ecmwf_0100_1h"],
+        # "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
+        "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
+    }
     # ancillary_list = [ancillary_ecmwf]#,ancillary_ww3]
-    ancillary_list = [ancillary_ecmwf, ancillary_ww3]
+    # ancillary_list = [ancillary_ecmwf, ancillary_ww3]
     logging.info("ancillary data: %s", ancillary_list)
 
     # Processing Parameters:
 
-    files = glob(os.path.join(full_safe_file, "*_L1B_*nc"))
-    cpt_total = len(files)
+    # files = glob(os.path.join(full_safe_file, "*_XSP_*nc"))
+    # cpt_total = len(files)
     cpt = defaultdict(int)
-    logging.info("Number of files: %s", cpt_total)
-    if len(files) == 0:
-        return None
+    # logging.info("Number of files: %s", cpt_total)
+    # if len(files) == 0:
+    #     return None
 
     # Loop on L1B netCDF files (per slice)
-    if dev:
-        logging.info("dev mode -> only one L1B file to treat")
-        files = files[0:1]
-    pbar = tqdm(range(len(files)))
+    # if dev:
+        # logging.info("dev mode -> only one L1B file to treat")
+        # files = files[0:1]
+    # pbar = tqdm(range(len(files)))
     cpt_success = 0
     cpt_already = 0
     cpt_ancillary_products_found = 0
-    for ii in pbar:
-        if dev:
-            pbar.set_description(
-                "sucess: %s/%s ancillary : %s, already: %s"
-                % (cpt_success, len(files), cpt_ancillary_products_found, cpt_already)
-            )
-        else:
-            pbar.set_description()
-        l1b_fullpath = files[ii]
-        l1c_full_path, l1b_product_version = get_l1c_filepath(
-            l1b_fullpath, version=version, outputdir=outputdir
+    # for ii in pbar:
+        # if dev:
+        #     pbar.set_description(
+        #         "sucess: %s/%s ancillary : %s, already: %s"
+        #         % (cpt_success, len(files), cpt_ancillary_products_found, cpt_already)
+        #     )
+        # else:
+        #     pbar.set_description()
+        # l1b_fullpath = files[ii]
+    l1b_fullpath = full_safe_file
+    l1c_full_path, l1b_product_version = get_l1c_filepath(
+        l1b_fullpath, version=version, outputdir=outputdir
+    )
+    if os.path.exists(l1c_full_path) and overwrite is False:
+        logging.debug("%s already exists", l1c_full_path)
+        cpt_already += 1
+    else:
+        ds_intra, ancillaries_flag_added = enrich_onesubswath_l1b(
+            l1b_fullpath,
+            ancillary_list=ancillary_list,
+            colocat=colocat,
+            time_separation=time_separation,
         )
-        if os.path.exists(l1c_full_path) and overwrite is False:
-            logging.debug("%s already exists", l1c_full_path)
-            cpt_already += 1
-        else:
-            ds_intra, ancillaries_flag_added = enrich_onesubswath_l1b(
-                l1b_fullpath,
-                ancillary_list=ancillary_list,
-                colocat=colocat,
-                time_separation=time_separation,
-            )
-            # if ancillary_product_found:
-            #     cpt_ancillary_products_found += 1
-            for anc in ancillaries_flag_added:
-                if ancillaries_flag_added[anc]:
-                    cpt[anc + " OK"] += 1
-                else:
-                    cpt[anc + " missing"] += 1
-            save_l1c_to_netcdf(
-                l1c_full_path,
-                ds_intra,
-                version=version,
-                version_L1B=l1b_product_version,
-            )
-            # save_l1c_to_zarr(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
-            logging.debug("successfully wrote  %s", l1c_full_path)
-            cpt_success += 1
+        # if ancillary_product_found:
+        #     cpt_ancillary_products_found += 1
+        for anc in ancillaries_flag_added:
+            if ancillaries_flag_added[anc]:
+                cpt[anc + " OK"] += 1
+            else:
+                cpt[anc + " missing"] += 1
+        save_l1c_to_netcdf(
+            l1c_full_path,
+            ds_intra,
+            version=version,
+            version_L1B=l1b_product_version,
+        )
+        # save_l1c_to_zarr(l1c_full_path, ds_intra, version=version, version_L1B=l1b_product_version)
+        logging.debug("successfully wrote  %s", l1c_full_path)
+        cpt_success += 1
     logging.info("cpt %s", cpt)
     logging.info("last file written %s", l1c_full_path)
-    return cpt_success, cpt_already, cpt_ancillary_products_found, cpt_total
+    return cpt_success, cpt_already, cpt_ancillary_products_found
 
 
 def enrich_onesubswath_l1b(
@@ -246,10 +252,10 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     """
 
     Args:
-        l1b_fullpath: str .nc l1b full path
-        version : str (eg. 1.2)
+        l1b_fullpath: str .nc level-1B full path
+        version : str (e.g. B49)
         outputdir: str [optional] default is l1c subdirectory // l1b inputs
-
+        makedir: bool [optional]
     Returns:
 
     """
@@ -356,7 +362,7 @@ def main():
         required=False,
     )
     parser.add_argument(
-        "--l1bsafe", required=True, help="L1B IW XSP SAFE (Sentinel-1 IFREMER) path"
+        "--l1bsafe", required=True, help="Level-1B WV XSP SAFE (Sentinel-1 IFREMER) path .nc"
     )
     parser.add_argument(
         "--outputdir",
@@ -368,7 +374,7 @@ def main():
         "--version",
         help="set the output product version (e.g. 0.3) default version will be read from config.yaml",
         required=False,
-        default=conf["l1c_iw_version"],
+        default=conf["l1c_wv_version"],
     )
     parser.add_argument(
         "--dev",
@@ -393,7 +399,6 @@ def main():
         cpt_success,
         cpt_already,
         cpt_ancillary_products_found,
-        cpt_total,
     ) = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
         version=args.version,
