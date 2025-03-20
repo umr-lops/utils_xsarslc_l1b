@@ -9,6 +9,7 @@ from glob import glob
 
 import numpy as np
 import xarray as xr
+from slcl1butils.utils import xndindex
 from tqdm import tqdm
 from xarray import DataTree
 
@@ -22,11 +23,13 @@ from slcl1butils.coloc.coloc_WV_WW3spectra import (
 )
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv
 from slcl1butils.get_config import get_conf
+# from slcl1butils.scripts.do_IW_L1C_SAFE_from_L1B_SAFE import append_ancillary_field
 from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
 from slcl1butils.raster_readers import (
     ecmwf_0100_1h,
     resource_strftime,
     ww3_global_yearly_3h,
+    ww3_IWL1Btrack_hindcasts_30min,
 )
 from slcl1butils.utils import get_memory_usage, netcdf_compliant
 
@@ -112,7 +115,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
         logging.debug("%s already exists", l1c_full_path)
         cpt_already += 1
     else:
-        ds_intra, ancillaries_flag_added = enrich_onesubswath_l1b(
+        dtwv, ancillaries_flag_added = enrich_onesubswath_l1b(
             l1b_fullpath,
             ancillary_list=ancillary_list,
             colocat=colocat,
@@ -127,7 +130,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
                 cpt[anc + " missing"] += 1
         save_l1c_to_netcdf(
             l1c_full_path,
-            ds_intra,
+            dtwv,
             version=version,
             version_L1B=l1b_product_version,
         )
@@ -144,12 +147,14 @@ def enrich_onesubswath_l1b(
 ):
     """
 
+    this method will allow to associate each tiles of each group of a given netcdf file
+
     Parameters
     ----------
-    l1b_fullpath str a measurement
-    ancillary_list [] optional
-    colocat bool
-    time_separation str 2tau or 1tau
+        l1b_fullpath str: e.g. S1C_WV_XSP__1SSV_20250308T064834_20250308T065217_001346_0025F9_57EE_AXZ.nc
+        ancillary_list dict: optional
+        colocat bool
+        time_separation str 2tau or 1tau
 
     Returns
     -------
@@ -158,13 +163,13 @@ def enrich_onesubswath_l1b(
 
     logging.debug("File in: %s", l1b_fullpath)
     if ancillary_list is None:
-        ancillary_list = []
+        ancillary_list = {}
     # ====================
     # X-SPEC
     # ====================
     #
     # Intraburst at 2tau x-spectra
-    xs_intra, ds_intra = compute_xs_from_l1b_wv(
+    xs_intra_groups, dt_intra = compute_xs_from_l1b_wv(
         l1b_fullpath, time_separation=time_separation
     )
 
@@ -172,31 +177,54 @@ def enrich_onesubswath_l1b(
     # COLOC
     # ====================
     ancillaries_flag_added = {}
+    colocated_dt = {}
     if colocat:
-        for ancillary in ancillary_list:
-            (
-                ds_intra,
-                ancillary_product_found,
-                flag_ancillary_field_added,
-            ) = append_ancillary_field(ancillary, ds_intra)
-            ancillaries_flag_added[ancillary["name"]] = flag_ancillary_field_added
-    if "WV" in l1b_fullpath:
-        (
-            ds_intra,
-            flag_ww3spectra_added,
-            flag_ww3spectra_found,
-        ) = resampleWW3spectra_on_SAR_cartesian_grid(dsar=ds_intra)
-        ancillaries_flag_added["ww3spectra"] = flag_ww3spectra_added
-    return ds_intra, ancillaries_flag_added
+        for wvmode in dt_intra:
+            ds_intra = dt_intra[wvmode].to_dataset()
+            for ancillary in ancillary_list:
+
+                (
+                    ds_intra,
+                    ancillary_product_found,
+                    flag_ancillary_field_added,
+                ) = append_ancillary_field(ancillary, ds_intra)
+                ancillaries_flag_added[ancillary["name"]] = flag_ancillary_field_added
+            colocated_dt[wvmode] = ds_intra
+
+    # this part is commented temporarily to test only the assoicattion with raster fields
+    # if "WV" in l1b_fullpath:
+    #     colocated_dt_with_ww3_spectra = {}
+    #     for wvmode in dt_intra:
+    #         ds_intra = dt_intra[wvmode].to_dataset()
+    #         dims_to_expand = ['time','tile_sample', 'tile_line']
+    #         imagettestiles_sizes = {d: k for d, k in ds_intra['longitude'].sizes.items()}
+    #         out = []
+    #         for i in xndindex(imagettestiles_sizes): # loop over tile_sample, tile_line and time
+    #             one_tile = ds_intra[i]
+    #             (
+    #                 one_tile,
+    #                 flag_ww3spectra_added,
+    #                 flag_ww3spectra_found,
+    #             ) = resampleWW3spectra_on_SAR_cartesian_grid(dsar=one_tile)
+    #             if flag_ww3spectra_found:
+    #                 ancillaries_flag_added["ww3spectra"] = flag_ww3spectra_added
+    #             out.append(one_tile)
+    #         out = xr.combine_by_coords([x.expand_dims(dims_to_expand) for x in out], combine_attrs='drop_conflicts')
+    #         colocated_dt_with_ww3_spectra[wvmode] = out
+    #     colocated_dt = xr.DataTree.from_dict(colocated_dt_with_ww3_spectra)
+    colocated_dt = xr.DataTree.from_dict(colocated_dt)
+    return colocated_dt, ancillaries_flag_added
 
 
 def append_ancillary_field(ancillary, ds_intra):
     """
 
+    method to associate regular grids from numerical models to a SAR dataset composed of sub tiles
+
     Parameters
     ----------
-    ancillary
-    ds_intra xarray.Dataset Level-1B XSP WV intra burst
+    ancillary (dict):
+    ds_intra (xarray.Dataset): Level-1B XSP WV1 or WV2 intra burst
 
     Returns
     -------
@@ -223,28 +251,39 @@ def append_ancillary_field(ancillary, ds_intra):
         # Getting the raster from anxillary data
         if ancillary["name"] == "ecmwf_0100_1h":
             raster_ds = ecmwf_0100_1h(filename)
-        if ancillary["name"] == "ww3_global_yearly_3h":
+        elif ancillary["name"] == "ww3_global_yearly_3h":
             raster_ds = ww3_global_yearly_3h(filename, closest_date)
+        elif ancillary["name"] in ["ww3hindcast_field", 'ww3_global_cciseastate']:
+            raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
+        elif ancillary["name"] in ["ww3hindcast_spectra", "ww3CCIseastate_spectra"]:
+            pass  # nothing to do here, there is a specific method called later in the code.
+            return ds_intra, flag_ancillary_field_added
+        else:
+            raise ValueError("%s ancillary name not handled" % ancillary["name"])
 
         # Get the polygons of the swath data
         first_pola_available = ds_intra.coords["pol"].data[0]
-        polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
-            ds_intra, polarization=first_pola_available, swath_only=True
-        )
-        # Crop the raster to the swath bounding box limit
+        all_imagettes = []
+        for ti,tt in enumerate(ds_intra.time):
+            subset_imagette = ds_intra.isel(time=ti)
+            polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
+                subset_imagette, polarization=first_pola_available, swath_only=True
+            )
+            # Crop the raster to the swath bounding box limit
 
-        raster_bb_ds = raster_cropping_in_polygon_bounding_box(
-            polygons["swath"][0], raster_ds
-        )
+            raster_bb_ds = raster_cropping_in_polygon_bounding_box(
+                polygons["swath"][0], raster_ds
+            )
 
-        # Loop on the grid in the product
+            # Loop on the grid in the product
 
-        _ds_intra = coloc_tiles_from_l1bgroup_with_raster(
-            ds_intra, raster_bb_ds, apply_merging=False
-        )
-        # Merging the datasets
-        ds_intra = xr.merge([ds_intra, _ds_intra])
-
+            _ds_imagette_with_raster = coloc_tiles_from_l1bgroup_with_raster(
+                subset_imagette, raster_bb_ds, apply_merging=False
+            )
+            # Merging the datasets
+            all_imagettes.append(_ds_imagette_with_raster)
+            # ds_intra = xr.merge([ds_intra, _ds_imagette_with_raster])
+        ds_intra = xr.concat(all_imagettes,dim='time')
     return ds_intra, ancillary_product_found, flag_ancillary_field_added
 
 
@@ -252,33 +291,28 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     """
 
     Args:
-        l1b_fullpath: str .nc level-1B full path
-        version : str (e.g. B49)
-        outputdir: str [optional] default is l1c subdirectory // l1b inputs
+        l1b_fullpath: str .nc level-1B full path "S1...SAFE.nc"
+        version : str  version of Level-1C product to write (e.g. B49)
+        outputdir: str [optional] default is l1c subdirectory taken from l1b input
         makedir: bool [optional]
     Returns:
 
     """
-    safe_file = os.path.basename(os.path.dirname(l1b_fullpath))
+    safe_file = os.path.basename(l1b_fullpath)
     if outputdir is None:
         run_directory = os.path.dirname(os.path.dirname(l1b_fullpath))
         # Output file directory
         pathout_root = run_directory.replace("l1b", "l1c")
     else:
         pathout_root = outputdir
-    pathout = os.path.join(pathout_root, version, safe_file)
+    l1b_product_version = safe_file.split('_')[-1].replace('.SAFE.nc','')
+    safe_file_l1c = safe_file.replace(l1b_product_version,version)
+    datedt_start_safe = datetime.strptime(safe_file_l1c.split('_')[4],'%Y%m%dT%H%M%S')
+    l1c_full_path = os.path.join(pathout_root,datedt_start_safe.strftime('%Y'),
+                                 datedt_start_safe.strftime('%j') , safe_file_l1c)
 
-    # Output filename
-    l1c_full_path = os.path.join(
-        pathout, os.path.basename(l1b_fullpath).replace("L1B", "L1C")
-    )
-    lastpiece = l1c_full_path.split("_")[-1]
-    l1b_product_version = lastpiece.replace(".nc", "")
-    l1c_full_path = l1c_full_path.replace(lastpiece, version + ".nc")
-    # l1c_full_path = l1c_full_path.replace(lastpiece, version + ".zarr") # zarr is a bad idea for single measurement processing -> about 500 inodes generated!!
-    logging.debug("File out: %s ", l1c_full_path)
-    if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
-        os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
+    if makedir:
+        os.makedirs(os.path.dirname(l1c_full_path), 0o0775,exist_ok=True)
     return l1c_full_path, l1b_product_version
 
 
