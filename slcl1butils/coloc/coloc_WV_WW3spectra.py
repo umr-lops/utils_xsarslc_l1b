@@ -17,7 +17,7 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
     """
 
     Args:
-        dsar: xarray.core.Dataset WV Level-1B IFREMER dataset
+        dsar: xarray.core.Dataset WV Level-1B Ifremer dataset for one tile of one imagette
 
     Returns:
 

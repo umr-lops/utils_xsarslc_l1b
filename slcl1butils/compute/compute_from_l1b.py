@@ -100,36 +100,53 @@ def compute_xs_from_l1b(
     return xs, ds
 
 
-def compute_xs_from_l1b_wv(_file, time_separation="2tau"):
-    # Reading the l1b file
+def compute_xs_from_l1b_wv(file, time_separation="2tau"):
+    """
+    # Reading the level1-b file to reconstruct complex full cross spectra
     # Loading the specified burst group
+    """
+    dt = xr.open_datatree(file)
+    # ds = xr.open_dataset(_file, group="")
+    xs_wv = {}
+    for group in dt.children:
 
-    ds = xr.open_dataset(_file, group="")
+        # ds = dt[burst_type+'burst_xspectra'].to_dataset()
+        ds = dt[group].to_dataset()
+        xsRe = ds[
+            "xspectra_" + time_separation + "_Re"
+        ]  # +1j*ds_intra['xspectra_1tau_Im']).mean(dim=['1tau'])
+        xsIm = ds["xspectra_" + time_separation + "_Im"]
+        if time_separation == "2tau":
+            xsRe = xsRe.squeeze("2tau")
+            xsIm = xsIm.squeeze("2tau")
+        if time_separation == "1tau":
+            xsRe = xsRe.mean(dim=["1tau"])
+            xsIm = xsIm.mean(dim=["1tau"])
 
-    # ds = dt[burst_type+'burst_xspectra'].to_dataset()
+        xs = xsRe + 1j * xsIm
 
-    xsRe = ds[
-        "xspectra_" + time_separation + "_Re"
-    ]  # +1j*ds_intra['xspectra_1tau_Im']).mean(dim=['1tau'])
-    xsIm = ds["xspectra_" + time_separation + "_Im"]
-    if time_separation == "2tau":
-        xsRe = xsRe.squeeze("2tau")
-        xsIm = xsIm.squeeze("2tau")
-    if time_separation == "1tau":
-        xsRe = xsRe.mean(dim=["1tau"])
-        xsIm = xsIm.mean(dim=["1tau"])
+        # Remove unique dimensions
+        # xs=xs.squeeze()
+        # convert the wavenumbers variables in range and azimuth into coordinates after
+        # selection of one unique vector without any other dimension dependency
+        # xs = xs.assign_coords({'k_rg': xs.k_rg})
 
-    xs = xsRe + 1j * xsIm
+        # even WV can have many tiles per imagette
+        # so we need to use the same k_rg for all tiles
+        dims_to_average = []
+        if 'time' in xs.k_rg.dims:
+            dims_to_average.append("time")
+        if "tile_sample" in xs.k_rg.dims:
+            dims_to_average.append("tile_sample")
+        if "tile_line" in xs.k_rg.dims:
+            dims_to_average.append("tile_line")
+        xs = xs.assign_coords({"k_rg": xs.k_rg.mean(dim=dims_to_average)})
 
-    # Remove unique dimensions
-    # xs=xs.squeeze()
-    # convert the wavenumbers variables in range and azimuth into coordinates after selection of one unique vector without any other dimsension dependency
-    # xs = xs.assign_coords({'k_rg': xs.k_rg})
-    # Replace the dimnesion name for frequencies
-    xs = xs.swap_dims({"freq_sample": "k_rg", "freq_line": "k_az"})
-    # Bug Fix to define the wavenumber in range direction.
-    xs.k_rg.attrs.update(
-        {"long_name": "wavenumber in range direction", "units": "rad/m"}
-    )
-
-    return xs, ds
+        # Replace the dimension name for frequencies
+        xs = xs.swap_dims({"freq_sample": "k_rg", "freq_line": "k_az"})
+        # Bug Fix to define the wavenumber in range direction.
+        xs.k_rg.attrs.update(
+            {"long_name": "wavenumber in range direction", "units": "rad/m"}
+        )
+        xs_wv[group] = xs
+    return xs_wv, dt
