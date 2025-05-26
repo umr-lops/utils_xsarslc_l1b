@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import pdb
 import time
 import warnings
 from collections import defaultdict
@@ -117,7 +118,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
     else:
         dtwv, ancillaries_flag_added = enrich_onesubswath_l1b(
             l1b_fullpath,
-            ancillary_list=ancillary_list,
+            ancillaries=ancillary_list,
             colocat=colocat,
             time_separation=time_separation,
         )
@@ -143,7 +144,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
 
 
 def enrich_onesubswath_l1b(
-    l1b_fullpath, ancillary_list=None, colocat=True, time_separation="2tau"
+    l1b_fullpath, ancillaries=None, colocat=True, time_separation="2tau"
 ):
     """
 
@@ -152,7 +153,7 @@ def enrich_onesubswath_l1b(
     Parameters
     ----------
         l1b_fullpath str: e.g. S1C_WV_XSP__1SSV_20250308T064834_20250308T065217_001346_0025F9_57EE_AXZ.nc
-        ancillary_list dict: optional
+        ancillaries dict: optional
         colocat bool
         time_separation str 2tau or 1tau
 
@@ -162,8 +163,8 @@ def enrich_onesubswath_l1b(
     """
 
     logging.debug("File in: %s", l1b_fullpath)
-    if ancillary_list is None:
-        ancillary_list = {}
+    if ancillaries is None:
+        ancillaries = {}
     # ====================
     # X-SPEC
     # ====================
@@ -181,17 +182,17 @@ def enrich_onesubswath_l1b(
     if colocat:
         for wvmode in dt_intra:
             ds_intra = dt_intra[wvmode].to_dataset()
-            for ancillary in ancillary_list:
+            for ancillary in ancillaries:
 
                 (
                     ds_intra,
                     ancillary_product_found,
                     flag_ancillary_field_added,
-                ) = append_ancillary_field(ancillary, ds_intra)
+                ) = append_ancillary_field(ancillaries[ancillary], ds_intra)
                 ancillaries_flag_added[ancillary["name"]] = flag_ancillary_field_added
             colocated_dt[wvmode] = ds_intra
 
-    # this part is commented temporarily to test only the assoicattion with raster fields
+    # this part is commented temporarily to test only the association with raster fields alone
     # if "WV" in l1b_fullpath:
     #     colocated_dt_with_ww3_spectra = {}
     #     for wvmode in dt_intra:
@@ -240,7 +241,7 @@ def append_ancillary_field(ancillary, ds_intra):
         str.split(ds_intra.attrs["start_date"], ".")[0], "%Y-%m-%d %H:%M:%S"
     )
     closest_date, filename = resource_strftime(
-        ancillary["resource"], step=ancillary["step"], date=sar_date
+        ancillary["pattern"], step=ancillary["step"], date=sar_date
     )
     if len(glob(filename)) != 1:
         logging.debug("no ancillary files matching %s", filename)
@@ -307,7 +308,7 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
         pathout_root = outputdir
     l1b_product_version = safe_file.split('_')[-1].replace('.SAFE.nc','')
     safe_file_l1c = safe_file.replace(l1b_product_version,version)
-    datedt_start_safe = datetime.strptime(safe_file_l1c.split('_')[4],'%Y%m%dT%H%M%S')
+    datedt_start_safe = datetime.strptime(safe_file_l1c.split('_')[5],'%Y%m%dT%H%M%S')
     l1c_full_path = os.path.join(pathout_root,datedt_start_safe.strftime('%Y'),
                                  datedt_start_safe.strftime('%j') , safe_file_l1c)
 

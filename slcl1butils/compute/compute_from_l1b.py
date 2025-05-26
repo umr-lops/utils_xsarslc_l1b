@@ -1,4 +1,5 @@
 import logging
+import pdb
 
 import xarray as xr
 
@@ -143,6 +144,15 @@ def compute_xs_from_l1b_wv(file, time_separation="2tau"):
         xs = xs.assign_coords({"k_rg": xs.k_rg.mean(dim=dims_to_average)})
 
         # Replace the dimension name for frequencies
+
+        # same for k_az : we take the mean of all the tiles
+        xs = xs.assign_coords(
+            {
+                "k_az": xs["k_az"].mean(
+                    dim=set(xs["k_az"].dims) - set(["freq_line"]), keep_attrs=True
+                )
+            }
+        )
         xs = xs.swap_dims({"freq_sample": "k_rg", "freq_line": "k_az"})
         # Bug Fix to define the wavenumber in range direction.
         xs.k_rg.attrs.update(
