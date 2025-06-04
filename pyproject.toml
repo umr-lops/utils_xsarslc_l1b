@@ -26,7 +26,8 @@ dependencies = [
     'aiohttp',
     'holoviews',
     'geoviews',
-    'dask'
+    'dask',
+    'rioxarray'
 ]
 dynamic = ["version"]
 
