@@ -25,10 +25,6 @@ plotting
     :members: add_polar_direction_lines
 
 
-.. automodule:: slcl1butils.plotting.wallpaper
-    :members: plot_wallpaper,make_wallpaper
-
-
 .. automodule:: slcl1butils.plotting.add_azimuth_cutoff_lines_on_polar_spec_fig
     :members: add_azimuth_cutoff_lines
 
@@ -36,4 +32,4 @@ colocation
 ==========
 
 .. automodule:: slcl1butils.coloc.coloc
-    :members: raster_cropping_in_polygon_bounding_box,coloc_tiles_from_l1bgroup_with_raster,do_coloc_L1B_with_raster_SAFE,
+    :members: raster_cropping_in_polygon_bounding_box,coloc_tiles_from_l1bgroup_with_raster

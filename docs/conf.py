@@ -91,7 +91,7 @@ html_style = 'css/slcl1butils.css'
 #html_logo = "_static/logo.png"
 html_theme_options = {
     'logo_only': False,
-    'display_version': True,
+    # 'display_version': True,
     'navigation_depth': 4,  # FIXME: doesn't work as expeted: should expand side menu
     'collapse_navigation': False # FIXME: same as above
 }
