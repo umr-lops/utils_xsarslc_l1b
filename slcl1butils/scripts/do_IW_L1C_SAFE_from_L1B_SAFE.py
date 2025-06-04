@@ -94,7 +94,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
     # Processing Parameters:
 
     # files = glob(os.path.join(run_directory, safe_file, "*_L1B_*nc"))
-    files = glob(os.path.join(run_directory, safe_file, "l1b*nc"))
+    files = glob(os.path.join(run_directory, safe_file, "l1*.nc"))
     logging.info("Number of files: %s", len(files))
     if len(files) == 0:
         return None
