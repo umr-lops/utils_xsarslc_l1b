@@ -4,3 +4,9 @@ try:
 except ImportError:  # for Python<3.8
     import importlib_metadata as metadata
 __version__ = metadata.version("slcl1butils")
+
+from . import compute
+from . import plotting
+from . import coloc
+from . import legacy_ocean
+
