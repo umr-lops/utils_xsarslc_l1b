@@ -12,6 +12,7 @@ import numpy as np
 import xarray as xr
 from tqdm import tqdm
 from xarray import DataTree
+import pandas as pd
 
 import slcl1butils
 from slcl1butils.coloc.coloc import (
@@ -31,6 +32,7 @@ from slcl1butils.raster_readers import (
     ww3_global_yearly_3h,
     ww3_IWL1Btrack_hindcasts_30min,
 )
+from slcl1butils.coloc.coloc_XSP_with_GRD import add_grd_ifr_wind
 from slcl1butils.utils import get_l1c_filepath, get_memory_usage, netcdf_compliant
 
 warnings.simplefilter(action="ignore")
@@ -92,7 +94,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
     # Processing Parameters:
 
     # files = glob(os.path.join(run_directory, safe_file, "*_L1B_*nc"))
-    files = glob(os.path.join(run_directory, safe_file, "l1b*nc"))
+    files = glob(os.path.join(run_directory, safe_file, "l1*.nc"))
     logging.info("Number of files: %s", len(files))
     if len(files) == 0:
         return None
@@ -236,6 +238,19 @@ def enrich_onesubswath_l1b(
             dsar=ds_inter, xspeckind="inter",nameWW3sp_product=ww3spectra_matching_name
         )
         flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
+    if 's1grd' in ancillary_list:
+
+        for uui,uu in enumerate(ancillary_list):
+            if 's1grd' in uu:
+                idx = uu
+        entry_conf = ancillary_list[idx]
+        slcgrdlist = pd.read_csv(entry_conf['listing'], names=['slc','grd'])
+        l1cgrids,cpt = add_grd_ifr_wind(dsintra=ds_intra, dsinter=ds_inter,
+                                        confgrd=entry_conf, dfpairs_slc_grd=slcgrdlist)
+        ds_intra = l1cgrids['intraburst']
+        ds_inter = l1cgrids['interburst']
+        logging.info('GRD wind added.')
+
     return ds_intra, ds_inter, flag_ancillaries
 
 
@@ -277,7 +292,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
     elif ancillary["name"] in ["ww3hindcast_field",'ww3_global_cciseastate']:
         raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
-    elif ancillary["name"] in ["ww3hindcast_spectra","ww3CCIseastate_spectra"]:
+    elif ancillary["name"] in ["ww3hindcast_spectra","ww3CCIseastate_spectra","s1-iw-GRD-Ifr-wind"]:
         pass  # nothing to do here, there is a specific method called later in the code.
         return ds_intra, ds_inter, ancillary_fields_added
     else:
@@ -411,6 +426,12 @@ def main():
         help="add WW3 spectra to L1C [default is False]",
     )
     parser.add_argument(
+        "--grdwind",
+        action="store_true",
+        default=False,
+        help="add GRD Ifremer (cyclobs) Wind product to L1C [default is False]",
+    )
+    parser.add_argument(
         "--dev",
         action="store_true",
         default=False,
@@ -439,6 +460,8 @@ def main():
         #    "ww3hindcast_spectra"
         #]
         ancillary_list["ww3CCIseastate_spectra"] = conf["auxilliary_dataset"]["ww3CCIseastate_spectra"]
+    if args.grdwind is True:
+        ancillary_list["s1grd"] = conf["auxilliary_dataset"]["s1iwgrdwind"]
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
         version=args.version,
