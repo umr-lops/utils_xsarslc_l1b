@@ -5,7 +5,7 @@
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/slcl1butils.svg)](https://anaconda.org/conda-forge/slcl1butils)
 
 # utils_xsarslc_l1b
-python tool to read/display/enrich Sentinel-1 SAR Level-1 B SLC products produced at IFREMER
+python tool to read/display/enrich Sentinel-1 SAR Level-1 B XSP products produced at IFREMER
 
 ## installation 
 

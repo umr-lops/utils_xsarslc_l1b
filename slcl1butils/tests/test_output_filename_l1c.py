@@ -1,4 +1,5 @@
 import pytest
+
 from slcl1butils.utils import get_l1c_filepath
 
 inputs_l1b = [
@@ -20,8 +21,7 @@ expected_l1c = [
 def test_outputfile_path(l1b_fullpath, expected_l1c):
     version = "B02"
     outputdir = "/tmp/"
-    l1c_full_path = get_l1c_filepath(
-        l1b_fullpath, version=version, outputdir=outputdir)
+    l1c_full_path = get_l1c_filepath(l1b_fullpath, version=version, outputdir=outputdir)
 
     print(l1c_full_path)
     assert l1c_full_path == expected_l1c
