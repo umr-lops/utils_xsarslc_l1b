@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 
 from slcl1butils.legacy_ocean.ocean.xPolarSpectrum import find_closest_ww3
-
+from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv,get_start_date_from_attrs
 # from ocean.xspectrum import from_ww3
 # from ocean.xPolarSpectrum import find_closest_ww3
 from slcl1butils.legacy_ocean.ocean.xspectrum import from_ww3
@@ -41,9 +41,7 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar) -> (xr.Dataset, bool, bool):
     dsar = dsar.drop_vars(["xspectra_2tau_Re", "xspectra_2tau_Im"])
     dsar = dsar.drop_dims(["freq_sample", "freq_line"])
     dsar["xspectra_2tau"] = xs2tau
-    start_date_dt = datetime.datetime.strptime(
-        dsar.attrs["start_date"], "%Y-%m-%d %H:%M:%S.%f"
-    )
+    start_date_dt = get_start_date_from_attrs(ds=dsar)
     # unit = basewv.split('-')[0]
     # unit_long = 'sentinel-1'+unit[-1]
     flag_ww3spectra_added = False

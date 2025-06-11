@@ -1,7 +1,24 @@
 import logging
 import pdb
-
+from datetime import datetime
 import xarray as xr
+
+def get_start_date_from_attrs(ds)->datetime:
+    """
+    
+    read and decode attribute to get start time of SAR acquisition
+
+    """
+    if 'start_date' in ds.attrs:
+        logging.debug("attrs : %s0", ds.attrs["start_date"])
+
+        sar_date = datetime.strptime(
+        str.split(ds.attrs["start_date"], ".")[0], "%Y-%m-%d %H:%M:%S"
+        )
+    else:
+        # ASAR attribute format
+        sar_date = datetime.strptime(str.split(ds.attrs["time_coverage_start"], ".")[0], "%Y-%m-%dT%H:%M:%S")
+    return sar_date
 
 
 def compute_xs_from_l1b(

@@ -20,7 +20,7 @@ from slcl1butils.coloc.coloc import (
 from slcl1butils.coloc.coloc_WV_WW3spectra import (
     resampleWW3spectra_on_SAR_cartesian_grid,
 )
-from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv
+from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv,get_start_date_from_attrs
 from slcl1butils.get_config import get_conf
 from slcl1butils.raster_readers import (
     ecmwf_0100_1h,
@@ -224,13 +224,15 @@ def enrich_onesubswath_l1b(
             one_tile["time"] = xr.DataArray([one_tile["time"].values], dims="time")
             one_tile["longitude"] = xr.DataArray([one_tile["longitude"]], dims="time")
             one_tile["latitude"] = xr.DataArray([one_tile["latitude"]], dims="time")
-            one_tile["sensing_time"] = xr.DataArray(
-                [one_tile["sensing_time"].values], dims="time"
-            )
+            #one_tile["sensing_time"] = xr.DataArray(
+            #    [one_tile["sensing_time"].values], dims="time"
+            #)
             out.append(one_tile)
         # ds_intra = xr.combine_by_coords([x.expand_dims(dims_to_expand) for x in out], combine_attrs='drop_conflicts') # killed on a 17.5km tile
         ds_intra = xr.concat([x.expand_dims(dims_to_expand) for x in out], dim="time")
     return ds_intra, ancillaries_flag_added
+
+
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -252,11 +254,7 @@ def append_ancillary_field(ancillary, ds_intra):
     # ===========================================
     # Check if the ancillary data can be found
     flag_ancillary_field_added = False
-    logging.debug("attrs : %s0", ds_intra.attrs["start_date"])
-
-    sar_date = datetime.strptime(
-        str.split(ds_intra.attrs["start_date"], ".")[0], "%Y-%m-%d %H:%M:%S"
-    )
+    sar_date = get_start_date_from_attrs(ds_intra)
     closest_date, filename = resource_strftime(
         ancillary["pattern"], step=ancillary["step"], date=sar_date
     )
@@ -338,7 +336,15 @@ def get_l1c_filepath(
         safe_file.split("_")[-1].replace(".SAFE.nc", "").replace(".nc", "")
     )
     safe_file_l1c = safe_file.replace(l1b_product_version, productid)
-    datedt_start_safe = datetime.strptime(safe_file_l1c.split("_")[5], "%Y%m%dT%H%M%S")
+    if 'S1' in safe_file_l1c:
+        datedt_start_safe = datetime.strptime(safe_file_l1c.split("_")[5], "%Y%m%dT%H%M%S")
+    elif 'ASA' in safe_file_l1c:
+        # 1PNPDE20101116_021451
+        substr = safe_file_l1c.split("_")[3][7:]+'T'+safe_file_l1c.split("_")[4]
+        logging.debug('substr ASAR : %s',substr)
+        datedt_start_safe = datetime.strptime(substr, "%Y%m%dT%H%M%S")
+    else:
+        raise ValueError('SAFE product not handle: %s'%safe_file_l1c)
     l1c_full_path = os.path.join(
         pathout_root,
         datedt_start_safe.strftime("%Y"),
