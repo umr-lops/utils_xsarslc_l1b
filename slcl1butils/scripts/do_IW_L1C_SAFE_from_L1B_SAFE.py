@@ -1,7 +1,7 @@
-import pdb
 import argparse
 import logging
 import os
+import pdb
 import time
 import warnings
 from collections import defaultdict
@@ -9,10 +9,10 @@ from datetime import datetime
 from glob import glob
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from tqdm import tqdm
 from xarray import DataTree
-import pandas as pd
 
 import slcl1butils
 from slcl1butils.coloc.coloc import (
@@ -22,6 +22,7 @@ from slcl1butils.coloc.coloc import (
 from slcl1butils.coloc.coloc_IW_WW3spectra import (
     resampleWW3spectra_on_TOPS_SAR_cartesian_grid,
 )
+from slcl1butils.coloc.coloc_XSP_with_GRD import add_grd_ifr_wind
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
 from slcl1butils.compute.homogeneous_output import add_missing_variables
 from slcl1butils.get_config import get_conf
@@ -32,7 +33,6 @@ from slcl1butils.raster_readers import (
     ww3_global_yearly_3h,
     ww3_IWL1Btrack_hindcasts_30min,
 )
-from slcl1butils.coloc.coloc_XSP_with_GRD import add_grd_ifr_wind
 from slcl1butils.utils import get_l1c_filepath, get_memory_usage, netcdf_compliant
 
 warnings.simplefilter(action="ignore")
@@ -215,19 +215,24 @@ def enrich_onesubswath_l1b(
                 ancillary_list[ancillary_name], ds_intra, ds_inter
             )
             flag_ancillaries[ancillary_name] = ancillary_fields_added
-    if "ww3hindcast_spectra" in ancillary_list or 'ww3CCIseastate_spectra' in ancillary_list:
+    if (
+        "ww3hindcast_spectra" in ancillary_list
+        or "ww3CCIseastate_spectra" in ancillary_list
+    ):
         idx = None
-        for uui,uu in enumerate(ancillary_list):
-            if 'spectra' in uu:
-                idx = uu  
-        ww3spectra_matching_name = ancillary_list[idx]['name']
-        logging.info('the product used to add wave spectra is: %s',ww3spectra_matching_name)
+        for uui, uu in enumerate(ancillary_list):
+            if "spectra" in uu:
+                idx = uu
+        ww3spectra_matching_name = ancillary_list[idx]["name"]
+        logging.info(
+            "the product used to add wave spectra is: %s", ww3spectra_matching_name
+        )
         (
             ds_intra,
             flag_ww3spectra_added,
             flag_ww3spectra_found,
         ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(
-            dsar=ds_intra, xspeckind="intra",nameWW3sp_product=ww3spectra_matching_name
+            dsar=ds_intra, xspeckind="intra", nameWW3sp_product=ww3spectra_matching_name
         )
         flag_ancillaries["ww3spectra_intra"] = flag_ww3spectra_added
         (
@@ -235,21 +240,24 @@ def enrich_onesubswath_l1b(
             flag_ww3spectra_added,
             flag_ww3spectra_found,
         ) = resampleWW3spectra_on_TOPS_SAR_cartesian_grid(
-            dsar=ds_inter, xspeckind="inter",nameWW3sp_product=ww3spectra_matching_name
+            dsar=ds_inter, xspeckind="inter", nameWW3sp_product=ww3spectra_matching_name
         )
         flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
-    if 's1grd' in ancillary_list:
-
-        for uui,uu in enumerate(ancillary_list):
-            if 's1grd' in uu:
+    if "s1grd" in ancillary_list:
+        for uui, uu in enumerate(ancillary_list):
+            if "s1grd" in uu:
                 idx = uu
         entry_conf = ancillary_list[idx]
-        slcgrdlist = pd.read_csv(entry_conf['listing'], names=['slc','grd'])
-        l1cgrids,cpt = add_grd_ifr_wind(dsintra=ds_intra, dsinter=ds_inter,
-                                        confgrd=entry_conf, dfpairs_slc_grd=slcgrdlist)
-        ds_intra = l1cgrids['intraburst']
-        ds_inter = l1cgrids['interburst']
-        logging.info('GRD wind added.')
+        slcgrdlist = pd.read_csv(entry_conf["listing"], names=["slc", "grd"])
+        l1cgrids, cpt = add_grd_ifr_wind(
+            dsintra=ds_intra,
+            dsinter=ds_inter,
+            confgrd=entry_conf,
+            dfpairs_slc_grd=slcgrdlist,
+        )
+        ds_intra = l1cgrids["intraburst"]
+        ds_inter = l1cgrids["interburst"]
+        logging.info("GRD wind added.")
 
     return ds_intra, ds_inter, flag_ancillaries
 
@@ -290,9 +298,13 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         raster_ds = ecmwf_0100_1h(filename)
     elif ancillary["name"] == "ww3_global_yearly_3h":
         raster_ds = ww3_global_yearly_3h(filename, closest_date)
-    elif ancillary["name"] in ["ww3hindcast_field",'ww3_global_cciseastate']:
+    elif ancillary["name"] in ["ww3hindcast_field", "ww3_global_cciseastate"]:
         raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
-    elif ancillary["name"] in ["ww3hindcast_spectra","ww3CCIseastate_spectra","s1-iw-GRD-Ifr-wind"]:
+    elif ancillary["name"] in [
+        "ww3hindcast_spectra",
+        "ww3CCIseastate_spectra",
+        "s1-iw-GRD-Ifr-wind",
+    ]:
         pass  # nothing to do here, there is a specific method called later in the code.
         return ds_intra, ds_inter, ancillary_fields_added
     else:
@@ -306,7 +318,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     raster_bb_ds = raster_cropping_in_polygon_bounding_box(
         polygons["swath"][0], raster_ds
     )
-    raster_bb_ds.attrs['name'] = ancillary['name']
+    raster_bb_ds.attrs["name"] = ancillary["name"]
     # Loop on the grid in the product
     burst_types = ["intra", "inter"]
     for burst_type in burst_types:
@@ -456,10 +468,12 @@ def main():
         "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
     }
     if args.ww3spectra:
-        #ancillary_list["ww3hindcast_spectra"] = conf["auxilliary_dataset"][
+        # ancillary_list["ww3hindcast_spectra"] = conf["auxilliary_dataset"][
         #    "ww3hindcast_spectra"
-        #]
-        ancillary_list["ww3CCIseastate_spectra"] = conf["auxilliary_dataset"]["ww3CCIseastate_spectra"]
+        # ]
+        ancillary_list["ww3CCIseastate_spectra"] = conf["auxilliary_dataset"][
+            "ww3CCIseastate_spectra"
+        ]
     if args.grdwind is True:
         ancillary_list["s1grd"] = conf["auxilliary_dataset"]["s1iwgrdwind"]
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(

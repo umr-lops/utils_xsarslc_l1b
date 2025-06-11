@@ -10,7 +10,7 @@ from glob import glob
 
 import numpy as np
 import xarray as xr
-from slcl1butils.utils import xndindex
+from shapely.geometry import Polygon
 from tqdm import tqdm
 from xarray import DataTree
 
@@ -24,7 +24,7 @@ from slcl1butils.coloc.coloc_WV_WW3spectra import (
 )
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv
 from slcl1butils.get_config import get_conf
-from shapely.geometry import Polygon
+
 # from slcl1butils.scripts.do_IW_L1C_SAFE_from_L1B_SAFE import append_ancillary_field
 # from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
 from slcl1butils.raster_readers import (
@@ -33,7 +33,7 @@ from slcl1butils.raster_readers import (
     ww3_global_yearly_3h,
     ww3_IWL1Btrack_hindcasts_30min,
 )
-from slcl1butils.utils import get_memory_usage, netcdf_compliant
+from slcl1butils.utils import get_memory_usage, netcdf_compliant, xndindex
 
 warnings.simplefilter(action="ignore")
 conf = get_conf()
@@ -96,22 +96,22 @@ def do_L1C_SAFE_from_L1B_SAFE(
 
     # Loop on L1B netCDF files (per slice)
     # if dev:
-        # logging.info("dev mode -> only one L1B file to treat")
-        # files = files[0:1]
+    # logging.info("dev mode -> only one L1B file to treat")
+    # files = files[0:1]
     # pbar = tqdm(range(len(files)))
     cpt_success = 0
     cpt_already = 0
     cpt_total = 1
     cpt_ancillary_products_found = 0
     # for ii in pbar:
-        # if dev:
-        #     pbar.set_description(
-        #         "sucess: %s/%s ancillary : %s, already: %s"
-        #         % (cpt_success, len(files), cpt_ancillary_products_found, cpt_already)
-        #     )
-        # else:
-        #     pbar.set_description()
-        # l1b_fullpath = files[ii]
+    # if dev:
+    #     pbar.set_description(
+    #         "sucess: %s/%s ancillary : %s, already: %s"
+    #         % (cpt_success, len(files), cpt_ancillary_products_found, cpt_already)
+    #     )
+    # else:
+    #     pbar.set_description()
+    # l1b_fullpath = files[ii]
     l1b_fullpath = full_safe_file
     l1c_full_path, l1b_product_version = get_l1c_filepath(
         l1b_fullpath, productid=productid, outputdir=outputdir
@@ -189,32 +189,33 @@ def enrich_onesubswath_l1b(
         # ds_intra = dt_intra[wvmode].to_dataset()
         # ds_intra = dt_intra.to_dataset()
         for ancillary in ancillaries:
-            logging.info('ancillary : %s',ancillary)
+            logging.info("ancillary : %s", ancillary)
 
             (
                 ds_intra,
                 ancillary_product_found,
                 flag_ancillary_field_added,
             ) = append_ancillary_field(ancillaries[ancillary], ds_intra)
-            official_name_ancillary = ancillaries[ancillary]['name']
+            official_name_ancillary = ancillaries[ancillary]["name"]
             ancillaries_flag_added[official_name_ancillary] = flag_ancillary_field_added
         # colocated_dt[wvmode] = ds_intra
 
     # this part is commented temporarily to test only the association with raster fields alone
     if "WV" in l1b_fullpath:
-        logging.info('ancillary WW3 spectra')
+        logging.info("ancillary WW3 spectra")
         colocated_dt_with_ww3_spectra = {}
         # for wvmode in dt_intra:
         # ds_intra = dt_intra.to_dataset()
         # ds_intra = dt_intra[wvmode].to_dataset()
         # dims_to_expand = ['time','tile_sample', 'tile_line']
-        dims_to_expand = ['tile_sample', 'tile_line']
-        imagettestiles_sizes = {d: k for d, k in ds_intra['longitude'].sizes.items()}
+        dims_to_expand = ["tile_sample", "tile_line"]
+        imagettestiles_sizes = {d: k for d, k in ds_intra["longitude"].sizes.items()}
         out = []
         all_cases = [ii for ii in xndindex(imagettestiles_sizes)]
-        for ix in tqdm(range(len(all_cases))): # loop over tile_sample, tile_line and time
-
-            i  = all_cases[ix]
+        for ix in tqdm(
+            range(len(all_cases))
+        ):  # loop over tile_sample, tile_line and time
+            i = all_cases[ix]
             one_tile = ds_intra[i]
             (
                 one_tile,
@@ -223,27 +224,35 @@ def enrich_onesubswath_l1b(
             ) = resampleWW3spectra_on_SAR_cartesian_grid(dsar=one_tile)
             if flag_ww3spectra_found:
                 ancillaries_flag_added["ww3spectra"] = flag_ww3spectra_added
-            if ix==0: # approximation all the WV of a given incidence (WV1 or WV2) can use the same k_az and k_rg
-                all_coord_to_drop = [uu for uu in one_tile['k_az'].coords if uu not in ['k_az','k_rg','ky','kx']]
-                k_az_ref =  one_tile['k_az'].drop(all_coord_to_drop)
-                k_rg_ref = one_tile['k_rg'].drop(all_coord_to_drop)
+            if (
+                ix == 0
+            ):  # approximation all the WV of a given incidence (WV1 or WV2) can use the same k_az and k_rg
+                all_coord_to_drop = [
+                    uu
+                    for uu in one_tile["k_az"].coords
+                    if uu not in ["k_az", "k_rg", "ky", "kx"]
+                ]
+                k_az_ref = one_tile["k_az"].drop(all_coord_to_drop)
+                k_rg_ref = one_tile["k_rg"].drop(all_coord_to_drop)
             else:
-                one_tile = one_tile.assign_coords({'k_az':k_az_ref})
-                one_tile = one_tile.assign_coords({'k_rg': k_rg_ref})
-            one_tile['time'] = xr.DataArray([one_tile['time'].values],dims='time')
-            one_tile['longitude'] = xr.DataArray([one_tile['longitude']],dims='time')
-            one_tile['latitude'] = xr.DataArray([one_tile['latitude']],dims='time')
-            one_tile['sensing_time'] = xr.DataArray([one_tile['sensing_time'].values], dims='time')
+                one_tile = one_tile.assign_coords({"k_az": k_az_ref})
+                one_tile = one_tile.assign_coords({"k_rg": k_rg_ref})
+            one_tile["time"] = xr.DataArray([one_tile["time"].values], dims="time")
+            one_tile["longitude"] = xr.DataArray([one_tile["longitude"]], dims="time")
+            one_tile["latitude"] = xr.DataArray([one_tile["latitude"]], dims="time")
+            one_tile["sensing_time"] = xr.DataArray(
+                [one_tile["sensing_time"].values], dims="time"
+            )
             out.append(one_tile)
         # ds_intra = xr.combine_by_coords([x.expand_dims(dims_to_expand) for x in out], combine_attrs='drop_conflicts') # killed on a 17.5km tile
 
-        ds_intra = xr.concat([x.expand_dims(dims_to_expand) for x in out],dim='time')
+        ds_intra = xr.concat([x.expand_dims(dims_to_expand) for x in out], dim="time")
         # ds_intra = xr.merge([x.expand_dims(dims_to_expand) for x in out])
-            # colocated_dt_with_ww3_spectra[wvmode] = out
+        # colocated_dt_with_ww3_spectra[wvmode] = out
         # colocated_dt = xr.DataTree.from_dict(colocated_dt_with_ww3_spectra)
     # colocated_dt = xr.DataTree.from_dict(colocated_dt)
     # return colocated_dt, ancillaries_flag_added
-    return ds_intra,ancillaries_flag_added
+    return ds_intra, ancillaries_flag_added
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -284,7 +293,7 @@ def append_ancillary_field(ancillary, ds_intra):
             raster_ds = ecmwf_0100_1h(filename)
         elif ancillary["name"] == "ww3_global_yearly_3h":
             raster_ds = ww3_global_yearly_3h(filename, closest_date)
-        elif ancillary["name"] in ["ww3hindcast_field", 'ww3_global_cciseastate']:
+        elif ancillary["name"] in ["ww3hindcast_field", "ww3_global_cciseastate"]:
             raster_ds = ww3_IWL1Btrack_hindcasts_30min(glob(filename)[0], closest_date)
         elif ancillary["name"] in ["ww3hindcast_spectra", "ww3CCIseastate_spectra"]:
             pass  # nothing to do here, there is a specific method called later in the code.
@@ -295,22 +304,26 @@ def append_ancillary_field(ancillary, ds_intra):
         # Get the polygons of the swath data
         first_pola_available = ds_intra.coords["pol"].data[0]
         all_imagettes = []
-        for ti,tt in enumerate(ds_intra.time):
+        for ti, tt in enumerate(ds_intra.time):
             subset_imagette = ds_intra.isel(time=ti)
             # polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
             #     subset_imagette, polarization=first_pola_available, swath_only=True
             # )
             idx = [0, 1, 3, 2]
-            coo = np.stack([subset_imagette['corner_longitude'].values.ravel()[idx],
-                            subset_imagette['corner_latitude'].values.ravel()[idx]]).T
+            coo = np.stack(
+                [
+                    subset_imagette["corner_longitude"].values.ravel()[idx],
+                    subset_imagette["corner_latitude"].values.ravel()[idx],
+                ]
+            ).T
             polygon_imagette = Polygon(coo)
             # Crop the raster to the swath bounding box limit
 
             raster_bb_ds = raster_cropping_in_polygon_bounding_box(
                 polygon_imagette, raster_ds
             )
-            if 'name' not in raster_bb_ds.attrs:
-                raster_bb_ds.attrs['name'] = ancillary["name"]
+            if "name" not in raster_bb_ds.attrs:
+                raster_bb_ds.attrs["name"] = ancillary["name"]
             # Loop on the grid in the product
 
             _ds_imagette_with_raster = coloc_tiles_from_l1bgroup_with_raster(
@@ -319,13 +332,15 @@ def append_ancillary_field(ancillary, ds_intra):
             # Merging the datasets
             all_imagettes.append(_ds_imagette_with_raster)
             # ds_intra = xr.merge([ds_intra, _ds_imagette_with_raster])
-        ds_raster = xr.concat(all_imagettes,dim='time')
-        ds_intra = xr.merge([ds_intra,ds_raster])
+        ds_raster = xr.concat(all_imagettes, dim="time")
+        ds_intra = xr.merge([ds_intra, ds_raster])
 
     return ds_intra, ancillary_product_found, flag_ancillary_field_added
 
 
-def get_l1c_filepath(l1b_fullpath, productid, outputdir=None, makedir=True)->(str,str):
+def get_l1c_filepath(
+    l1b_fullpath, productid, outputdir=None, makedir=True
+) -> (str, str):
     """
 
     transform a Level-1B WV path into a Level-1C XSP WV
@@ -345,14 +360,20 @@ def get_l1c_filepath(l1b_fullpath, productid, outputdir=None, makedir=True)->(st
         pathout_root = run_directory.replace("l1b", "l1c")
     else:
         pathout_root = outputdir
-    l1b_product_version = safe_file.split('_')[-1].replace('.SAFE.nc','').replace('.nc','')
-    safe_file_l1c = safe_file.replace(l1b_product_version,productid)
-    datedt_start_safe = datetime.strptime(safe_file_l1c.split('_')[5],'%Y%m%dT%H%M%S')
-    l1c_full_path = os.path.join(pathout_root,datedt_start_safe.strftime('%Y'),
-                                 datedt_start_safe.strftime('%j') , safe_file_l1c)
+    l1b_product_version = (
+        safe_file.split("_")[-1].replace(".SAFE.nc", "").replace(".nc", "")
+    )
+    safe_file_l1c = safe_file.replace(l1b_product_version, productid)
+    datedt_start_safe = datetime.strptime(safe_file_l1c.split("_")[5], "%Y%m%dT%H%M%S")
+    l1c_full_path = os.path.join(
+        pathout_root,
+        datedt_start_safe.strftime("%Y"),
+        datedt_start_safe.strftime("%j"),
+        safe_file_l1c,
+    )
 
     if makedir:
-        os.makedirs(os.path.dirname(l1c_full_path), 0o0775,exist_ok=True)
+        os.makedirs(os.path.dirname(l1c_full_path), 0o0775, exist_ok=True)
     return l1c_full_path, l1b_product_version
 
 
@@ -382,7 +403,6 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     ds_intra.attrs["processor"] = __file__
     ds_intra.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
     ds_intra.attrs["L1B_product_version"] = productid_L1B
-
 
     # dt.attrs["version_l1butils"] = slcl1butils.__version__
     # dt.attrs["L1C_product_version"] = productid_L1C
@@ -446,7 +466,9 @@ def main():
         required=False,
     )
     parser.add_argument(
-        "--l1bsafe", required=True, help="Level-1B WV XSP SAFE (Sentinel-1 IFREMER) path .nc"
+        "--l1bsafe",
+        required=True,
+        help="Level-1B WV XSP SAFE (Sentinel-1 IFREMER) path .nc",
     )
     parser.add_argument(
         "--outputdir",

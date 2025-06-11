@@ -14,7 +14,7 @@ from slcl1butils.legacy_ocean.ocean.xspectrum import from_ww3
 from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
 
 
-def resampleWW3spectra_on_SAR_cartesian_grid(dsar)->(xr.Dataset,bool,bool):
+def resampleWW3spectra_on_SAR_cartesian_grid(dsar) -> (xr.Dataset, bool, bool):
     """
 
     Args:
@@ -91,14 +91,14 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar)->(xr.Dataset,bool,bool):
             ds_ww3_cartesian = ds_ww3_cartesian.swap_dims(
                 {"kx": "k_rg", "ky": "k_az"}
             ).T
-            ds_ww3_cartesian = ds_ww3_cartesian.rename({'time': 'time_ww3'})
-            rawspww3 = rawspww3.rename({'time': 'time_ww3'})
+            ds_ww3_cartesian = ds_ww3_cartesian.rename({"time": "time_ww3"})
+            rawspww3 = rawspww3.rename({"time": "time_ww3"})
             dsar = xr.merge([dsar, ds_ww3_cartesian, rawspww3])
             flag_ww3spectra_added = True
     return dsar, flag_ww3spectra_added, flag_ww3spectra_found
 
 
-def get_ww3RAWspectra_path_from_date(datedt)->str:
+def get_ww3RAWspectra_path_from_date(datedt) -> str:
     """
 
 

@@ -101,7 +101,7 @@ def compute_xs_from_l1b(
     return xs, ds
 
 
-def compute_xs_from_l1b_wv(file, time_separation="2tau")->(xr.DataArray,xr.Dataset):
+def compute_xs_from_l1b_wv(file, time_separation="2tau") -> (xr.DataArray, xr.Dataset):
     """
     # Reading the level1-b file to reconstruct complex full cross spectra
     # Loading the specified burst group
@@ -114,15 +114,14 @@ def compute_xs_from_l1b_wv(file, time_separation="2tau")->(xr.DataArray,xr.Datas
         dt: xr.Dataset of the WV L1B (intra burst, since there is no inter burst group for WV)
     """
     # dt = xr.open_datatree(file)
-    ds = xr.open_dataset(file,engine='h5netcdf').load()
+    ds = xr.open_dataset(file, engine="h5netcdf").load()
     # ds = xr.open_dataset(_file, group="")
     xs_wv = {}
     xs = None
     # for group in dt.children:
 
-        # ds = dt[burst_type+'burst_xspectra'].to_dataset()
-        # ds = dt[group].to_dataset()
-
+    # ds = dt[burst_type+'burst_xspectra'].to_dataset()
+    # ds = dt[group].to_dataset()
 
     # ds = dt.to_dataset()
     xsRe = ds[
@@ -147,7 +146,7 @@ def compute_xs_from_l1b_wv(file, time_separation="2tau")->(xr.DataArray,xr.Datas
     # even WV can have many tiles per imagette
     # so we need to use the same k_rg for all tiles
     dims_to_average = []
-    if 'time' in xs.k_rg.dims:
+    if "time" in xs.k_rg.dims:
         dims_to_average.append("time")
     if "tile_sample" in xs.k_rg.dims:
         dims_to_average.append("tile_sample")

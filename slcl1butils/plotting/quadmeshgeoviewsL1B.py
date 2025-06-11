@@ -25,7 +25,7 @@ def doQuadMeshL1BorL1C_onefile(
     else:  # suppose that it is already parsed L1B through prepare_L1BC()
         # print(variable, "suppose that it is already parsed L1B through prepare_L1BC()")
         pass
-    logging.info('ff : %s',ff)
+    logging.info("ff : %s", ff)
     qmeshes = gv.Dataset(ff, kdims=["longitude", "latitude"]).to(gv.QuadMesh)
     # clipping = {"min": "red", "max": "green", "NaN": "gray"}
     clipping = {
@@ -103,16 +103,22 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
     else:
         stackable_coords = ["tile_line"]
     if variable in ["cwave_params"]:
-        sel_coords = {"pol":kwargs.get("pol")}
+        sel_coords = {"pol": kwargs.get("pol")}
         if "2tau" in ds.dims:
-            selection_coords = {"2tau": 0, "k_gp": kwargs.get("k_gp"), "phi_hf": kwargs.get("phi_hf")}
+            selection_coords = {
+                "2tau": 0,
+                "k_gp": kwargs.get("k_gp"),
+                "phi_hf": kwargs.get("phi_hf"),
+            }
         else:
-            selection_coords = {"k_gp": kwargs.get("k_gp"), "phi_hf": kwargs.get("phi_hf")}
+            selection_coords = {
+                "k_gp": kwargs.get("k_gp"),
+                "phi_hf": kwargs.get("phi_hf"),
+            }
         sub = (
-            ds[variable].sel(sel_coords)
-            .isel(
-                selection_coords
-            )
+            ds[variable]
+            .sel(sel_coords)
+            .isel(selection_coords)
             .stack({"y": stackable_coords})
         )
     elif variable in ["macs_Im", "macs_Re"]:
@@ -122,20 +128,21 @@ def prepare_L1BC(ff, bursttype, variable, **kwargs):
             .stack({"y": stackable_coords})
         )
     else:
-
-        if 'pol' in ds[variable].coords:
-            sel_coords = {"pol":kwargs.get("pol")}
+        if "pol" in ds[variable].coords:
+            sel_coords = {"pol": kwargs.get("pol")}
             sub = ds[variable].sel(sel_coords)
         else:
             sub = ds[variable]
         if "burst" in ds[variable].coords:
             sub = sub.stack({"y": ["burst", "tile_line"]})
-        elif 'time' in ds[variable].coords: # for WV (many imagette along time dimension)
+        elif (
+            "time" in ds[variable].coords
+        ):  # for WV (many imagette along time dimension)
             sub = sub.stack({"y": ["time", "tile_line"]})
         else:
             sub = sub.stack({"y": ["tile_line"]})
 
-        logging.debug('sub : %s', sub)
+        logging.debug("sub : %s", sub)
     if np.isnan(sub).any():
         logging.debug(
             "there are %s NaN in the variable stacked : %s",
@@ -238,7 +245,7 @@ def doQuadMeshL1BorL1C_manyfiles_opt(
         logging.info("variable = %s", var)
         for ff in files:
             ds = allds[ff]
-            kwargs['pol'] = pol
+            kwargs["pol"] = pol
             sub = prepare_L1BC(ds, bursttype, var, **kwargs)
             subs["%s_%s" % (var, ff)] = sub
             subdsx.append(sub)
