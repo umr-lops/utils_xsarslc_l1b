@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import pdb
 import time
 import warnings
 from collections import defaultdict
@@ -12,7 +11,6 @@ import numpy as np
 import xarray as xr
 from shapely.geometry import Polygon
 from tqdm import tqdm
-from xarray import DataTree
 
 import slcl1butils
 from slcl1butils.coloc.coloc import (
@@ -24,9 +22,6 @@ from slcl1butils.coloc.coloc_WV_WW3spectra import (
 )
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv
 from slcl1butils.get_config import get_conf
-
-# from slcl1butils.scripts.do_IW_L1C_SAFE_from_L1B_SAFE import append_ancillary_field
-# from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
 from slcl1butils.raster_readers import (
     ecmwf_0100_1h,
     resource_strftime,
@@ -182,12 +177,7 @@ def enrich_onesubswath_l1b(
     # COLOC
     # ====================
     ancillaries_flag_added = {}
-    # colocated_dt = {}
-    # ds_intra = None
     if colocat:
-        # for wvmode in dt_intra:
-        # ds_intra = dt_intra[wvmode].to_dataset()
-        # ds_intra = dt_intra.to_dataset()
         for ancillary in ancillaries:
             logging.info("ancillary : %s", ancillary)
 
@@ -198,16 +188,10 @@ def enrich_onesubswath_l1b(
             ) = append_ancillary_field(ancillaries[ancillary], ds_intra)
             official_name_ancillary = ancillaries[ancillary]["name"]
             ancillaries_flag_added[official_name_ancillary] = flag_ancillary_field_added
-        # colocated_dt[wvmode] = ds_intra
 
     # this part is commented temporarily to test only the association with raster fields alone
     if "WV" in l1b_fullpath:
         logging.info("ancillary WW3 spectra")
-        colocated_dt_with_ww3_spectra = {}
-        # for wvmode in dt_intra:
-        # ds_intra = dt_intra.to_dataset()
-        # ds_intra = dt_intra[wvmode].to_dataset()
-        # dims_to_expand = ['time','tile_sample', 'tile_line']
         dims_to_expand = ["tile_sample", "tile_line"]
         imagettestiles_sizes = {d: k for d, k in ds_intra["longitude"].sizes.items()}
         out = []
@@ -245,13 +229,7 @@ def enrich_onesubswath_l1b(
             )
             out.append(one_tile)
         # ds_intra = xr.combine_by_coords([x.expand_dims(dims_to_expand) for x in out], combine_attrs='drop_conflicts') # killed on a 17.5km tile
-
         ds_intra = xr.concat([x.expand_dims(dims_to_expand) for x in out], dim="time")
-        # ds_intra = xr.merge([x.expand_dims(dims_to_expand) for x in out])
-        # colocated_dt_with_ww3_spectra[wvmode] = out
-        # colocated_dt = xr.DataTree.from_dict(colocated_dt_with_ww3_spectra)
-    # colocated_dt = xr.DataTree.from_dict(colocated_dt)
-    # return colocated_dt, ancillaries_flag_added
     return ds_intra, ancillaries_flag_added
 
 
@@ -302,13 +280,9 @@ def append_ancillary_field(ancillary, ds_intra):
             raise ValueError("%s ancillary name not handled" % ancillary["name"])
 
         # Get the polygons of the swath data
-        first_pola_available = ds_intra.coords["pol"].data[0]
         all_imagettes = []
         for ti, tt in enumerate(ds_intra.time):
             subset_imagette = ds_intra.isel(time=ti)
-            # polygons, coordinates, variables = get_swath_tiles_polygons_from_l1bgroup(
-            #     subset_imagette, polarization=first_pola_available, swath_only=True
-            # )
             idx = [0, 1, 3, 2]
             coo = np.stack(
                 [
@@ -393,58 +367,17 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     #
     # Arranging & saving Results
     # Building the output datatree
-    # dt = DataTree()
-    burst_type = "intra"
     ds_intra = netcdf_compliant(ds_intra)
-    # dt[burst_type + "burst"] = DataTree(ds_intra)
 
     ds_intra.attrs["version_l1butils"] = slcl1butils.__version__
     ds_intra.attrs["L1C_product_version"] = productid_L1C
     ds_intra.attrs["processor"] = __file__
     ds_intra.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
     ds_intra.attrs["L1B_product_version"] = productid_L1B
-
-    # dt.attrs["version_l1butils"] = slcl1butils.__version__
-    # dt.attrs["L1C_product_version"] = productid_L1C
-    # dt.attrs["processor"] = __file__
-    # dt.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
-    # dt.attrs["L1B_product_version"] = productid_L1B
-
-    #
     # Saving the results in netCDF
 
     ds_intra.to_netcdf(l1c_full_path)
     ds_intra.close()
-    logging.debug("output file written successfully: %s", l1c_full_path)
-
-
-def save_l1c_to_zarr(l1c_full_path, ds_intra, productid, version_L1B):
-    """
-
-    Args:
-        l1c_full_path: str
-        ds_intra: xr.Dataset intra burst
-        productid : str (e.g. 1.4)
-        version_L1B : str  (e.g. 1.4)
-    Returns:
-
-    """
-    #
-    # Arranging & saving Results
-    # Building the output datatree
-    dt = DataTree()
-    burst_type = "intra"
-    dt[burst_type + "burst"] = DataTree(data=ds_intra)
-
-    dt.attrs["version_l1butils"] = slcl1butils.__version__
-    dt.attrs["L1C_product_version"] = productid
-    dt.attrs["processor"] = __file__
-    dt.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
-    dt.attrs["L1B_product_version"] = version_L1B
-
-    #
-    # Saving the results in netCDF
-    dt.to_zarr(l1c_full_path)
     logging.debug("output file written successfully: %s", l1c_full_path)
 
 
