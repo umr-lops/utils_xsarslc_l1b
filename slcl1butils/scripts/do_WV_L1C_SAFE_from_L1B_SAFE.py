@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import pdb
 import time
 import warnings
 from collections import defaultdict
@@ -75,25 +76,25 @@ def do_l1c_safe_from_l1b_safe(
         ancillary_list[uu] = conf["auxilliary_dataset"][uu]
     logging.info("ancillary data: %s", ancillary_list)
     cpt = defaultdict(int)
-    cpt['file_successfuly_written'] = 0
-    cpt['output_file_already_present'] = 0
-    cpt['ancillary_products_expected'] = len(ancillary_list)
+    cpt["file_successfuly_written"] = 0
+    cpt["output_file_already_present"] = 0
+    cpt["ancillary_products_expected"] = len(ancillary_list)
     l1b_fullpath = full_safe_file
     l1c_full_path, l1b_product_version = get_l1c_filepath(
         l1b_fullpath, productid=productid, outputdir=outputdir
     )
     if os.path.exists(l1c_full_path) and overwrite is False:
         logging.debug("%s already exists", l1c_full_path)
-        cpt['output_file_already_present'] += 1
+        cpt["output_file_already_present"] += 1
     else:
-        dtwv, ancillaries_flag_added = enrich_onesubswath_l1b(
+        dswv, ancillaries_flag_added = enrich_onesubswath_l1b(
             l1b_fullpath,
             ancillaries=ancillary_list,
             colocat=colocat,
             time_separation=time_separation,
             product_configuration=product_configuration,
         )
-        cpt['nb_imagette'] = len(dtwv['time'])
+        cpt["nb_imagette"] = len(dswv["time"])
 
         for anc in ancillaries_flag_added:
             if ancillaries_flag_added[anc]:
@@ -102,13 +103,13 @@ def do_l1c_safe_from_l1b_safe(
                 cpt[anc + " missing"] += 1
         save_l1c_to_netcdf(
             l1c_full_path,
-            dtwv,
+            dswv,
             productid_L1C=productid,
             productid_L1B=l1b_product_version,
         )
         # save_l1c_to_zarr(l1c_full_path, ds_intra, productid=productid, version_L1B=l1b_product_version)
         logging.debug("successfully wrote  %s", l1c_full_path)
-        cpt['file_successfuly_written'] += 1
+        cpt["file_successfuly_written"] += 1
     logging.info("cpt %s", cpt)
     logging.info("last file written %s", l1c_full_path)
     return cpt
@@ -123,7 +124,7 @@ def enrich_onesubswath_l1b(
 ):
     """
 
-    this method allow to associate each WV tiles of a given netcdf file (WV1 or WV2)
+    this method allow to associate each WV tiles of a given netcdf file (WV1 or WV2) with ancillary data
 
     Parameters
     ----------
@@ -217,7 +218,16 @@ def enrich_onesubswath_l1b(
 
             # --- 3. Apply the transformation in a single, chained command ---
             # Let's name your original dataset `ds_original` for clarity
-
+            k_rg_tmp = (
+                one_tile["k_rg"]
+                .rename({"k_rg": "freq_sample"})
+                .assign_coords({"freq_sample": freq_sample_coords})
+            )
+            kaz_tmp = (
+                one_tile["k_az"]
+                .rename({"k_az": "freq_line"})
+                .assign_coords({"freq_line": freq_line_coords})
+            )
             ds_new = (
                 one_tile.reset_index(["k_az", "k_rg"], drop=False)
                 .rename({"k_az": "freq_line", "k_rg": "freq_sample"})
@@ -225,11 +235,76 @@ def enrich_onesubswath_l1b(
                     {"freq_line": freq_line_coords, "freq_sample": freq_sample_coords}
                 )
             )
-            ds_new = ds_new.rename({"kx": "k_rg", "ky": "k_az"})
+            # ds_new = ds_new.rename({"kx": "k_rg", "ky": "k_az"})
+            ds_new["k_rg"] = k_rg_tmp
+            ds_new["k_az"] = kaz_tmp
             out.append(ds_new)
         # ds_intra = xr.combine_by_coords([x.expand_dims(dims_to_expand) for x in out], combine_attrs='drop_conflicts') # killed on a 17.5km tile
         ds_intra = xr.concat([x.expand_dims(dims_to_expand) for x in out], dim="time")
+    # remove half of the cross spectra to save space
+
+    ind_positive_rg = np.where(ds_intra["k_rg"].isel(time=0).squeeze() >= 0)[0]
+    logging.info(
+        "there was xspectra with size: %i in range",
+        len(ds_intra["k_rg"].isel(time=0).squeeze()),
+    )
+    ds_intra = ds_intra.isel(freq_sample=ind_positive_rg)
+    logging.info(
+        "after cropping half, there is xspectra with size: %i in range",
+        len(ds_intra["k_rg"].isel(time=0).squeeze()),
+    )
+
+    # make sure the order of the dimensions is the same as the one defined for ENVISAT Level-1B XSP
+    ds_intra = change_dimension_order(ds_intra)
     return ds_intra, ancillaries_flag_added
+
+
+def change_dimension_order(ds):
+    # Create a copy of the dataset to modify. This is a good practice.
+    ds_new = ds.copy(deep=True)
+
+    # Define the set of dimensions that identify a variable for transformation.
+    # Using a set is efficient for checking subsets.
+    dims_to_find = {
+        "time",
+        "tile_sample",
+        "tile_line",
+        "freq_line",
+        "freq_sample",
+        "pol",
+    }
+
+    # Define the dimensions to squeeze
+    dims_to_squeeze = ["tile_line", "tile_sample"]
+
+    # The final desired order of dimensions for the transformed variables.
+    # The ellipsis (...) is crucial, it means "keep all other dimensions not listed here
+    # in their original relative order". This makes the code robust.
+    final_order = ["time", "freq_line", "freq_sample", "pol", "2tau", ...]
+
+    # --- The Loop ---
+    # Iterate over all data variable names in the original dataset
+    for var_name in ds.data_vars:
+        # Check if the variable has the dimensions we're looking for
+        if dims_to_find.issubset(ds[var_name].dims):
+            # print(f"\nTransforming variable: '{var_name}'")
+
+            # 1. Select the DataArray
+            var_to_transform = ds[var_name]
+
+            # 2. Apply the full transformation chain to just this DataArray
+            transformed_var = (
+                var_to_transform.squeeze(dims_to_squeeze, drop=True)
+                .expand_dims("2tau")
+                .transpose(*final_order)
+            )
+
+            # 3. Overwrite the variable in our new dataset with the transformed version
+            ds_new[var_name] = transformed_var
+
+    # print("\n--- Transformed Dataset ---")
+    # print(ds_new)
+    return ds_new
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -339,7 +414,7 @@ def get_l1c_filepath(
         )
     elif "ASA" in safe_file_l1c:
         # 1PNPDE20101116_021451
-        substr = safe_file_l1c.split("_")[3][7:] + "T" + safe_file_l1c.split("_")[4]
+        substr = safe_file_l1c.split("_")[3][6:] + "T" + safe_file_l1c.split("_")[4]
         logging.debug("substr ASAR : %s", substr)
         datedt_start_safe = datetime.strptime(substr, "%Y%m%dT%H%M%S")
     else:
@@ -369,6 +444,8 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     Returns:
 
     """
+    if os.path.exists(l1c_full_path):
+        os.remove(l1c_full_path)
     #
     # Arranging & saving Results
     # Building the output datatree
@@ -460,9 +537,7 @@ def main():
         overwrite=args.overwrite,
         dev=args.dev,
     )
-    logging.info(
-        "counters : %s",cpt
-    )
+    logging.info("counters : %s", cpt)
 
     logging.info("successful L1C processing")
     logging.info("outputdir was: %s", args.outputdir)

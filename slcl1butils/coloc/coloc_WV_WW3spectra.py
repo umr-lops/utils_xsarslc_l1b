@@ -27,29 +27,37 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar) -> (xr.Dataset, bool, bool):
     # basewv = os.path.basename(l1bwv)
     # datedt = datetime.datetime.strptime(basewv.split('-')[4],'%Y%m%dt%H%M%S')
     xsNtau = {}
-    for tautau in ['2tau','1tau']:
+    for tautau in ["2tau", "1tau"]:
         # temporarily change coord for xpsectra and remove them from the ds
-        xsntau = dsar["xspectra_%s_Re"%tautau] + 1j * dsar["xspectra_%s_Im"%tautau]
-        xsntau = xsntau.assign_coords(
-            {
-                "k_rg": xsntau["k_rg"].mean(
-                    dim=set(xsntau["k_rg"].dims) - set(["freq_sample"]), keep_attrs=True
-                )
-            }
-        ).swap_dims({"freq_sample": "k_rg", "freq_line": "k_az"})
-        if xsntau[tautau].size==1:
-            xsntau = symmetrize_xspectrum(xsntau).squeeze(dim=tautau)
-        else:
-            xsntau = symmetrize_xspectrum(xsntau)
-        xsntau.attrs = dsar["xspectra_%s_Re"%tautau].attrs
-        xsNtau[tautau] = xsntau
-        # replace the half spectrum by a single variable, to save complexe values only possibility is zarr
-        dsar = dsar.drop_vars(["xspectra_%s_Re"%tautau, "xspectra_%s_Im"%tautau])
-    dsar = dsar.drop_dims(["freq_sample", "freq_line"]) # this line remove all the other variable depending on freq_sample,freq_line e.g. xspectra_1tau_Im
+        if "xspectra_%s_Re" % tautau in dsar:
+            xsntau = (
+                dsar["xspectra_%s_Re" % tautau] + 1j * dsar["xspectra_%s_Im" % tautau]
+            )
+            xsntau = xsntau.assign_coords(
+                {
+                    "k_rg": xsntau["k_rg"].mean(
+                        dim=set(xsntau["k_rg"].dims) - set(["freq_sample"]),
+                        keep_attrs=True,
+                    )
+                }
+            ).swap_dims({"freq_sample": "k_rg", "freq_line": "k_az"})
+            if xsntau[tautau].size == 1:
+                xsntau = symmetrize_xspectrum(xsntau).squeeze(dim=tautau)
+            else:
+                xsntau = symmetrize_xspectrum(xsntau)
+            xsntau.attrs = dsar["xspectra_%s_Re" % tautau].attrs
+            xsNtau[tautau] = xsntau
+            # replace the half spectrum by a single variable, to save complexe values only possibility is zarr
+            dsar = dsar.drop_vars(
+                ["xspectra_%s_Re" % tautau, "xspectra_%s_Im" % tautau]
+            )
+    dsar = dsar.drop_dims(
+        ["freq_sample", "freq_line"]
+    )  # this line remove all the other variable depending on freq_sample,freq_line e.g. xspectra_1tau_Im
     for tautau in xsNtau:
         # put back the cross spectra
-        dsar["xspectra_%s"%tautau] = xsNtau[tautau]
-    xs2tau = xsNtau['2tau']
+        dsar["xspectra_%s" % tautau] = xsNtau[tautau]
+    xs2tau = xsNtau["2tau"]
     start_date_dt = get_start_date_from_attrs(ds=dsar)
     # unit = basewv.split('-')[0]
     # unit_long = 'sentinel-1'+unit[-1]

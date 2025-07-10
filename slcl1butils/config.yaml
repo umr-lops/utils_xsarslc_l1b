@@ -10,29 +10,29 @@ DIR_S1_WW3_RAWSPECTRA: "/path/to/WW3spectra"
 auxilliary_dataset:
   ecmwf_0100_1h:
     step: 1
-    pattern: './ecmwf/forecast/hourly/0100deg/netcdf_light/%Y/%j/ECMWF_FORECAST_0100_%Y%m%d%H%M_10U_10V.nc'
-    name: 'ecmwf_0100_1h'
+    pattern: "./ecmwf/forecast/hourly/0100deg/netcdf_light/%Y/%j/ECMWF_FORECAST_0100_%Y%m%d%H%M_10U_10V.nc"
+    name: "ecmwf_0100_1h"
   ww3_global_yearly_3h:
     step: 3
-    pattern: './GLOBMULTI_ERA5_GLOBCUR_01/GLOB-30M/%Y/FIELD_NC/LOPS_WW3-GLOB-30M_%Y%m.nc'
-    name: 'ww3_global_yearly_3h'
+    pattern: "./GLOBMULTI_ERA5_GLOBCUR_01/GLOB-30M/%Y/FIELD_NC/LOPS_WW3-GLOB-30M_%Y%m.nc"
+    name: "ww3_global_yearly_3h"
   ww3_global_cciseastate: # 1hourly and 0.5deg, generated dec 2024
     step: 1
-    pattern: './PROJECT/CCI/RUNS/GLOB-30M/%Y/FIELD_NC/CCI_WW3-GLOB-30M_%Y%m.nc'
-    name : 'ww3_global_cciseastate'
+    pattern: "./PROJECT/CCI/RUNS/GLOB-30M/%Y/FIELD_NC/CCI_WW3-GLOB-30M_%Y%m.nc"
+    name: "ww3_global_cciseastate"
   ww3hindcast_spectra:
     step: 1
-    name: 'ww3hindcast_spectra'
-    pattern: './PROJECT/SARWAVE/HINDCAST/GLOBAL_NOGQM*/3*/GLOB-30M/*/TRACK_NC/LOPS_WW3-GLOB-30M_%Y%m_trck.nc'
+    name: "ww3hindcast_spectra"
+    pattern: "./PROJECT/SARWAVE/HINDCAST/GLOBAL_NOGQM*/3*/GLOB-30M/*/TRACK_NC/LOPS_WW3-GLOB-30M_%Y%m_trck.nc"
   ww3CCIseastate_spectra:
     step: 1
-    name: 'ww3CCIseastate_spectra'
-    pattern: './PROJECT/SARWAVE/RUNS/%Y/CCI_WW3-GLOB-30M_%Y%m_trck.nc'
+    name: "ww3CCIseastate_spectra"
+    pattern: "./PROJECT/SARWAVE/RUNS/%Y/CCI_WW3-GLOB-30M_%Y%m_trck.nc"
   s1iwgrdwind:
     step: 1
-    name: 's1-iw-GRD-Ifr-wind'
-    pattern : './processings/grdwind+windir_2025v3v7_1v9_0v3v7_0v0v6_0v0v6_1v4v1_1v0v15_1v0v10_1v2v5_1v1v4_1v1v1_1v2v1/cmod5n_ecmwf_norecal_15042025_l1l2only/'
-    listing : './data/listings/s1_iw_slcand_grd_safe_training_dataset_medium_and_extension_based_on_creodias_archive_v1.txt'
+    name: "s1-iw-GRD-Ifr-wind"
+    pattern: "./processings/grdwind+windir_2025v3v7_1v9_0v3v7_0v0v6_0v0v6_1v4v1_1v0v15_1v0v10_1v2v5_1v1v4_1v1v1_1v2v1/cmod5n_ecmwf_norecal_15042025_l1l2only/"
+    listing: "./data/listings/s1_iw_slcand_grd_safe_training_dataset_medium_and_extension_based_on_creodias_archive_v1.txt"
     radius_coloc: 0.2
 list_variables_expected_intra:
   bt_thresh:
@@ -41,10 +41,10 @@ list_variables_expected_intra:
     coords: []
     dims: []
   azimuth_cutoff_error:
-      attrs:
-        long_name: "normalized azimuthal cut-off error std (2tau)"
-      coords: ['tile_line', 'tile_sample']
-      dims: ['tile_line', 'tile_sample']
+    attrs:
+      long_name: "normalized azimuthal cut-off error std (2tau)"
+    coords: ["tile_line", "tile_sample"]
+    dims: ["tile_line", "tile_sample"]
 #  - nesz_filt
 #  - macs_Im
 #  - bright_targets_histogram
@@ -66,4 +66,3 @@ list_variables_expected_inter:
       long_name: "lower edge of bright target to background amplitude ratio"
     coords: []
     dims: []
-

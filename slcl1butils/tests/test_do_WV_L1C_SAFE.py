@@ -1,10 +1,12 @@
+import os
+
 # tests/scripts/test_do_WV_L1C_SAFE_from_L1B_SAFE.py
 import unittest
-from unittest.mock import MagicMock, call, patch, ANY
 from datetime import datetime
-import xarray as xr
+from unittest.mock import ANY, MagicMock, call, patch
+
 import numpy as np
-import os
+import xarray as xr
 
 # Import the script we want to test
 from slcl1butils.scripts import do_WV_L1C_SAFE_from_L1B_SAFE as l1c_script
@@ -22,18 +24,24 @@ class TestWV_L1C_Processing(unittest.TestCase):
         self.fake_ds = xr.Dataset(
             {"dummy_var": (("time",), [1])},
             coords={"time": [np.datetime64("2023-01-01T12:00:00")]},
-            attrs={"history": "L1B test data"}
+            attrs={"history": "L1B test data"},
         )
         self.fake_ds_with_corners = self.fake_ds.copy()
-        self.fake_ds_with_corners['corner_longitude'] = (('time', 'corner'), [[-5, -4, -5, -4]])
-        self.fake_ds_with_corners['corner_latitude'] = (('time', 'corner'), [[45, 45, 46, 46]])
+        self.fake_ds_with_corners["corner_longitude"] = (
+            ("time", "corner"),
+            [[-5, -4, -5, -4]],
+        )
+        self.fake_ds_with_corners["corner_latitude"] = (
+            ("time", "corner"),
+            [[45, 45, 46, 46]],
+        )
 
         # Fake product configuration
         self.fake_product_config = {
             "ancillary_raster_dataset": ["ecmwf_0100_1h"],
             "crop_xspectra": None,
             "mode": "WV",
-            "add_ww3spectra": False
+            "add_ww3spectra": False,
         }
 
     def test_get_l1c_filepath_generation(self):
@@ -44,15 +52,22 @@ class TestWV_L1C_Processing(unittest.TestCase):
         product_id = "B49"
         output_dir = "/tmp/l1c_output"
 
-        with patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.os.makedirs") as mock_makedirs:
+        with patch(
+            "slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.os.makedirs"
+        ) as mock_makedirs:
             l1c_path, l1b_version = l1c_script.get_l1c_filepath(
                 l1b_path, product_id, outputdir=output_dir
             )
 
             self.assertEqual(l1b_version, "A24")
             self.assertIn(output_dir, l1c_path)
-            self.assertIn(os.path.join("2023","121"), l1c_path)  # Check for YYYY/JJJ structure
-            self.assertIn("S1A_WV1_XSP__1SSV_20230501T055632_20230501T061158_048336_05D036_B49.nc", l1c_path)
+            self.assertIn(
+                os.path.join("2023", "121"), l1c_path
+            )  # Check for YYYY/JJJ structure
+            self.assertIn(
+                "S1A_WV1_XSP__1SSV_20230501T055632_20230501T061158_048336_05D036_B49.nc",
+                l1c_path,
+            )
             mock_makedirs.assert_called_once()
 
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.netcdf_compliant")
@@ -81,9 +96,14 @@ class TestWV_L1C_Processing(unittest.TestCase):
 
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.enrich_onesubswath_l1b")
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.save_l1c_to_netcdf")
-    @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.os.path.exists", return_value=True)
+    @patch(
+        "slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.os.path.exists",
+        return_value=True,
+    )
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.get_l1c_filepath")
-    def test_main_logic_skips_if_overwrite_is_false(self, mock_get_path, mock_exists, mock_save, mock_enrich):
+    def test_main_logic_skips_if_overwrite_is_false(
+        self, mock_get_path, mock_exists, mock_save, mock_enrich
+    ):
         """
         Test that processing is skipped if the output file exists and overwrite is False.
         """
@@ -94,47 +114,68 @@ class TestWV_L1C_Processing(unittest.TestCase):
             productid="B49",
             outputdir="/tmp",
             product_configuration=self.fake_product_config,
-            overwrite=False
+            overwrite=False,
         )
 
-        self.assertEqual(cpt['file_successfuly_written'], 0)
-        self.assertEqual(cpt['output_file_already_present'], 1)
+        self.assertEqual(cpt["file_successfuly_written"], 0)
+        self.assertEqual(cpt["output_file_already_present"], 1)
         mock_enrich.assert_not_called()
         mock_save.assert_not_called()
 
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.glob")
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.resource_strftime")
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.get_start_date_from_attrs")
-    def test_append_ancillary_field_file_not_found(self, mock_get_date, mock_strftime, mock_glob):
+    def test_append_ancillary_field_file_not_found(
+        self, mock_get_date, mock_strftime, mock_glob
+    ):
         """
         Test that ancillary appending gracefully does nothing if the ancillary file is not found.
         """
         mock_get_date.return_value = datetime(2023, 1, 1)
-        mock_strftime.return_value = (datetime(2023, 1, 1), "/path/to/missing_ancillary_*.nc")
+        mock_strftime.return_value = (
+            datetime(2023, 1, 1),
+            "/path/to/missing_ancillary_*.nc",
+        )
         mock_glob.return_value = []  # Simulate file not found
 
         ancillary_config = {"name": "ecmwf_0100_1h", "pattern": "pattern", "step": 1}
 
-        ds_out, found, added = l1c_script.append_ancillary_field(ancillary_config, self.fake_ds)
+        ds_out, found, added = l1c_script.append_ancillary_field(
+            ancillary_config, self.fake_ds
+        )
 
         self.assertIs(ds_out, self.fake_ds)  # Should return the original dataset
         self.assertFalse(found)
         self.assertFalse(added)
 
-    @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.coloc_tiles_from_l1bgroup_with_raster")
-    @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.raster_cropping_in_polygon_bounding_box")
+    @patch(
+        "slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.coloc_tiles_from_l1bgroup_with_raster"
+    )
+    @patch(
+        "slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.raster_cropping_in_polygon_bounding_box"
+    )
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.ecmwf_0100_1h")
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.glob")
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.resource_strftime")
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.get_start_date_from_attrs")
-    def test_append_ancillary_field_success_flow(self, mock_get_date, mock_strftime, mock_glob, mock_ecmwf_reader,
-                                                 mock_crop, mock_coloc):
+    def test_append_ancillary_field_success_flow(
+        self,
+        mock_get_date,
+        mock_strftime,
+        mock_glob,
+        mock_ecmwf_reader,
+        mock_crop,
+        mock_coloc,
+    ):
         """
         Test the successful workflow for appending an ancillary field.
         """
         # Arrange
         mock_get_date.return_value = datetime(2023, 1, 1)
-        mock_strftime.return_value = (datetime(2023, 1, 1), "/path/to/found_ancillary.nc")
+        mock_strftime.return_value = (
+            datetime(2023, 1, 1),
+            "/path/to/found_ancillary.nc",
+        )
         mock_glob.return_value = ["/path/to/found_ancillary.nc"]  # Simulate file found
 
         fake_raster_ds = xr.Dataset({"wind_speed": [10]})
@@ -145,16 +186,22 @@ class TestWV_L1C_Processing(unittest.TestCase):
         ancillary_config = {"name": "ecmwf_0100_1h", "pattern": "pattern", "step": 1}
 
         # Act
-        ds_out, found, added = l1c_script.append_ancillary_field(ancillary_config, self.fake_ds_with_corners)
+        ds_out, found, added = l1c_script.append_ancillary_field(
+            ancillary_config, self.fake_ds_with_corners
+        )
 
         # Assert
         self.assertTrue(found)
         self.assertTrue(added)
         # self.assertIn("ecmwf_0100_1h", ds_out.data_vars)  # Check that the merged variable is present
-        self.assertIn("coloc_wind", ds_out.coords)  # Check that the merged variable is present
+        self.assertIn(
+            "coloc_wind", ds_out.coords
+        )  # Check that the merged variable is present
         # self.assertEqual("coloc_wind",ds_out.name)
         mock_ecmwf_reader.assert_called_once()
-        mock_crop.assert_called_once_with(ANY, fake_raster_ds)  # ANY for the shapely.Polygon
+        mock_crop.assert_called_once_with(
+            ANY, fake_raster_ds
+        )  # ANY for the shapely.Polygon
         mock_coloc.assert_called_once()
 
 
