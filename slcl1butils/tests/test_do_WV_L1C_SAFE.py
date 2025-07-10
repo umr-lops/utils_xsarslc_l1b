@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, call, patch, ANY
 from datetime import datetime
 import xarray as xr
 import numpy as np
+import os
 
 # Import the script we want to test
 from slcl1butils.scripts import do_WV_L1C_SAFE_from_L1B_SAFE as l1c_script
@@ -50,7 +51,7 @@ class TestWV_L1C_Processing(unittest.TestCase):
 
             self.assertEqual(l1b_version, "A24")
             self.assertIn(output_dir, l1c_path)
-            self.assertIn("2023/121", l1c_path)  # Check for YYYY/JJJ structure
+            self.assertIn(os.path.join("2023","121"), l1c_path)  # Check for YYYY/JJJ structure
             self.assertIn("S1A_WV1_XSP__1SSV_20230501T055632_20230501T061158_048336_05D036_B49.nc", l1c_path)
             mock_makedirs.assert_called_once()
 
