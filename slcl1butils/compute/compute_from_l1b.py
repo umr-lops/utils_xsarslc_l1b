@@ -1,5 +1,6 @@
 import logging
 import pdb
+import numpy as np
 from datetime import datetime
 import xarray as xr
 
@@ -118,20 +119,32 @@ def compute_xs_from_l1b(
     return xs, ds
 
 
-def compute_xs_from_l1b_wv(file, time_separation="2tau") -> (xr.DataArray, xr.Dataset):
+def compute_xs_from_l1b_wv(file, time_separation="2tau",crop_limits=None) -> (xr.DataArray, xr.Dataset):
     """
     # Reading the level1-b file to reconstruct complex full cross spectra
     # Loading the specified burst group
 
     Args:
         file: str full path of Level-1B XSP WV SAFE.nc
-
+        time_separation: str '2tau' or '1tau' [default="2tau"]
+        crop_limits: dict to crop the variable depending on freq_sample and freq_line e.g. {'rg':0.15,'az':0.20} [optional,default= None -> no cropping]
     Returns:
         xs: xr.DataArray (complex cross spectra)
         dt: xr.Dataset of the WV L1B (intra burst, since there is no inter burst group for WV)
     """
     # dt = xr.open_datatree(file)
     ds = xr.open_dataset(file, engine="h5netcdf").load()
+    if crop_limits is not None:
+        logging.info('crop spectra with wave numbers below : %s',crop_limits)
+        indrg_to_keep = np.where(ds['k_rg'].isel(time=0)<=crop_limits['rg'])[0]
+        indaz_to_keep = np.where(ds['k_az'].isel(time=0)<=crop_limits['az'])[0]
+        logging.info('new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i',
+                     len(ds['freq_sample']),len(ds['freq_line']),len(indrg_to_keep),len(indaz_to_keep))
+        ds = ds.isel(freq_sample=indrg_to_keep,freq_line=indaz_to_keep)
+
+        # for vv in ds:
+            # if 'freq_sample' in ds[vv].dims:
+                # ds[vv] = ds[vv].where((ds['k_rg']<=crop_limits['rg']) & (ds['k_az']<=crop_limits['az']),drop=True)
     # ds = xr.open_dataset(_file, group="")
     xs_wv = {}
     xs = None
