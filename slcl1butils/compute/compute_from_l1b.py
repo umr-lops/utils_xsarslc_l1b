@@ -1,24 +1,27 @@
 import logging
-import pdb
-import numpy as np
 from datetime import datetime
+
+import numpy as np
 import xarray as xr
 
-def get_start_date_from_attrs(ds)->datetime:
+
+def get_start_date_from_attrs(ds) -> datetime:
     """
-    
+
     read and decode attribute to get start time of SAR acquisition
 
     """
-    if 'start_date' in ds.attrs:
+    if "start_date" in ds.attrs:
         logging.debug("attrs : %s0", ds.attrs["start_date"])
 
         sar_date = datetime.strptime(
-        str.split(ds.attrs["start_date"], ".")[0], "%Y-%m-%d %H:%M:%S"
+            str.split(ds.attrs["start_date"], ".")[0], "%Y-%m-%d %H:%M:%S"
         )
     else:
         # ASAR attribute format
-        sar_date = datetime.strptime(str.split(ds.attrs["time_coverage_start"], ".")[0], "%Y-%m-%dT%H:%M:%S")
+        sar_date = datetime.strptime(
+            str.split(ds.attrs["time_coverage_start"], ".")[0], "%Y-%m-%dT%H:%M:%S"
+        )
     return sar_date
 
 
@@ -119,7 +122,9 @@ def compute_xs_from_l1b(
     return xs, ds
 
 
-def compute_xs_from_l1b_wv(file, time_separation="2tau",crop_limits=None) -> (xr.DataArray, xr.Dataset):
+def compute_xs_from_l1b_wv(
+    file, time_separation="2tau", crop_limits=None
+) -> (xr.DataArray, xr.Dataset):
     """
     # Reading the level1-b file to reconstruct complex full cross spectra
     # Loading the specified burst group
@@ -135,19 +140,24 @@ def compute_xs_from_l1b_wv(file, time_separation="2tau",crop_limits=None) -> (xr
     # dt = xr.open_datatree(file)
     ds = xr.open_dataset(file, engine="h5netcdf").load()
     if crop_limits is not None:
-        logging.info('crop spectra with wave numbers below : %s',crop_limits)
-        indrg_to_keep = np.where(ds['k_rg'].isel(time=0)<=crop_limits['rg'])[0]
-        indaz_to_keep = np.where(ds['k_az'].isel(time=0)<=crop_limits['az'])[0]
-        logging.info('new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i',
-                     len(ds['freq_sample']),len(ds['freq_line']),len(indrg_to_keep),len(indaz_to_keep))
-        ds = ds.isel(freq_sample=indrg_to_keep,freq_line=indaz_to_keep)
+        logging.info("crop spectra with wave numbers below : %s", crop_limits)
+        indrg_to_keep = np.where(ds["k_rg"].isel(time=0) <= crop_limits["rg"])[0]
+        indaz_to_keep = np.where(ds["k_az"].isel(time=0) <= crop_limits["az"])[0]
+        logging.info(
+            "new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i",
+            len(ds["freq_sample"]),
+            len(ds["freq_line"]),
+            len(indrg_to_keep),
+            len(indaz_to_keep),
+        )
+        ds = ds.isel(freq_sample=indrg_to_keep, freq_line=indaz_to_keep)
 
         # for vv in ds:
-            # if 'freq_sample' in ds[vv].dims:
-                # ds[vv] = ds[vv].where((ds['k_rg']<=crop_limits['rg']) & (ds['k_az']<=crop_limits['az']),drop=True)
+        # if 'freq_sample' in ds[vv].dims:
+        # ds[vv] = ds[vv].where((ds['k_rg']<=crop_limits['rg']) & (ds['k_az']<=crop_limits['az']),drop=True)
     # ds = xr.open_dataset(_file, group="")
-    xs_wv = {}
-    xs = None
+    # xs_wv = {}
+    # xs = None
     # for group in dt.children:
 
     # ds = dt[burst_type+'burst_xspectra'].to_dataset()

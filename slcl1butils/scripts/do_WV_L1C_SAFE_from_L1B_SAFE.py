@@ -21,8 +21,11 @@ from slcl1butils.coloc.coloc import (
 from slcl1butils.coloc.coloc_WV_WW3spectra import (
     resampleWW3spectra_on_SAR_cartesian_grid,
 )
-from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b_wv,get_start_date_from_attrs
-from slcl1butils.get_config import get_conf,get_product_id_parameters
+from slcl1butils.compute.compute_from_l1b import (
+    compute_xs_from_l1b_wv,
+    get_start_date_from_attrs,
+)
+from slcl1butils.get_config import get_conf, get_product_id_parameters
 from slcl1butils.raster_readers import (
     ecmwf_0100_1h,
     resource_strftime,
@@ -79,7 +82,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
     #     "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
     # }
     ancillary_list = {}
-    for iix,uu in enumerate(product_configuration['ancillary_raster_dataset']):
+    for iix, uu in enumerate(product_configuration["ancillary_raster_dataset"]):
         # ancillary_list[uu] = product_configuration['ancillary_raster_dataset'][iix]
         ancillary_list[uu] = conf["auxilliary_dataset"][uu]
     # ancillary_list = [ancillary_ecmwf]#,ancillary_ww3]
@@ -126,7 +129,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
             ancillaries=ancillary_list,
             colocat=colocat,
             time_separation=time_separation,
-            product_configuration=product_configuration
+            product_configuration=product_configuration,
         )
         # if ancillary_product_found:
         #     cpt_ancillary_products_found += 1
@@ -150,7 +153,11 @@ def do_L1C_SAFE_from_L1B_SAFE(
 
 
 def enrich_onesubswath_l1b(
-    l1b_fullpath,product_configuration, ancillaries=None, colocat=True, time_separation="2tau",
+    l1b_fullpath,
+    product_configuration,
+    ancillaries=None,
+    colocat=True,
+    time_separation="2tau",
 ):
     """
 
@@ -177,7 +184,9 @@ def enrich_onesubswath_l1b(
     #
     # Intraburst at 2tau x-spectra
     xs_intra_groups, ds_intra = compute_xs_from_l1b_wv(
-        l1b_fullpath, time_separation=time_separation,crop_limits=product_configuration['crop_xspectra']
+        l1b_fullpath,
+        time_separation=time_separation,
+        crop_limits=product_configuration["crop_xspectra"],
     )
 
     # ====================
@@ -197,7 +206,10 @@ def enrich_onesubswath_l1b(
             ancillaries_flag_added[official_name_ancillary] = flag_ancillary_field_added
 
     # this part is commented temporarily to test only the association with raster fields alone
-    if "WV" == product_configuration['mode'] and product_configuration['add_ww3spectra'] is True:
+    if (
+        "WV" == product_configuration["mode"]
+        and product_configuration["add_ww3spectra"] is True
+    ):
         logging.info("ancillary WW3 spectra")
         dims_to_expand = ["tile_sample", "tile_line"]
         imagettestiles_sizes = {d: k for d, k in ds_intra["longitude"].sizes.items()}
@@ -233,34 +245,30 @@ def enrich_onesubswath_l1b(
             one_tile["time"] = xr.DataArray([one_tile["time"].values], dims="time")
             one_tile["longitude"] = xr.DataArray([one_tile["longitude"]], dims="time")
             one_tile["latitude"] = xr.DataArray([one_tile["latitude"]], dims="time")
-            #one_tile["sensing_time"] = xr.DataArray(
+            # one_tile["sensing_time"] = xr.DataArray(
             #    [one_tile["sensing_time"].values], dims="time"
-            #)
+            # )
             # replace the dependency to k_rg and k_az to freq_line and freq_sample
             # --- 2. Define the new coordinates you want ---
             # The new coordinates are simple integer ranges
-            freq_line_coords = np.arange(one_tile.dims['k_az'])
-            freq_sample_coords = np.arange(one_tile.dims['k_rg'])
+            freq_line_coords = np.arange(one_tile.dims["k_az"])
+            freq_sample_coords = np.arange(one_tile.dims["k_rg"])
 
             # --- 3. Apply the transformation in a single, chained command ---
             # Let's name your original dataset `ds_original` for clarity
 
             ds_new = (
-                one_tile
-                .reset_index(['k_az', 'k_rg'], drop=False)
-                .rename({'k_az': 'freq_line', 'k_rg': 'freq_sample'})
-                .assign_coords({
-                    'freq_line': freq_line_coords,
-                    'freq_sample': freq_sample_coords
-                })
+                one_tile.reset_index(["k_az", "k_rg"], drop=False)
+                .rename({"k_az": "freq_line", "k_rg": "freq_sample"})
+                .assign_coords(
+                    {"freq_line": freq_line_coords, "freq_sample": freq_sample_coords}
+                )
             )
-            ds_new = ds_new.rename({'kx':'k_rg','ky':'k_az'})
+            ds_new = ds_new.rename({"kx": "k_rg", "ky": "k_az"})
             out.append(ds_new)
         # ds_intra = xr.combine_by_coords([x.expand_dims(dims_to_expand) for x in out], combine_attrs='drop_conflicts') # killed on a 17.5km tile
         ds_intra = xr.concat([x.expand_dims(dims_to_expand) for x in out], dim="time")
     return ds_intra, ancillaries_flag_added
-
-
 
 
 def append_ancillary_field(ancillary, ds_intra):
@@ -364,15 +372,17 @@ def get_l1c_filepath(
         safe_file.split("_")[-1].replace(".SAFE.nc", "").replace(".nc", "")
     )
     safe_file_l1c = safe_file.replace(l1b_product_version, productid)
-    if 'S1' in safe_file_l1c:
-        datedt_start_safe = datetime.strptime(safe_file_l1c.split("_")[5], "%Y%m%dT%H%M%S")
-    elif 'ASA' in safe_file_l1c:
+    if "S1" in safe_file_l1c:
+        datedt_start_safe = datetime.strptime(
+            safe_file_l1c.split("_")[5], "%Y%m%dT%H%M%S"
+        )
+    elif "ASA" in safe_file_l1c:
         # 1PNPDE20101116_021451
-        substr = safe_file_l1c.split("_")[3][7:]+'T'+safe_file_l1c.split("_")[4]
-        logging.debug('substr ASAR : %s',substr)
+        substr = safe_file_l1c.split("_")[3][7:] + "T" + safe_file_l1c.split("_")[4]
+        logging.debug("substr ASAR : %s", substr)
         datedt_start_safe = datetime.strptime(substr, "%Y%m%dT%H%M%S")
     else:
-        raise ValueError('SAFE product not handle: %s'%safe_file_l1c)
+        raise ValueError("SAFE product not handle: %s" % safe_file_l1c)
     l1c_full_path = os.path.join(
         pathout_root,
         datedt_start_safe.strftime("%Y"),
@@ -453,7 +463,9 @@ def main():
         "--configproducts",
         help="path of a yaml config file where the different versions of products are defined",
         required=False,
-        default=os.path.join(os.path.dirname(slcl1butils.__file__),'BXX_description.yml')
+        default=os.path.join(
+            os.path.dirname(slcl1butils.__file__), "BXX_description.yml"
+        ),
     )
     parser.add_argument(
         "--dev",
@@ -474,7 +486,9 @@ def main():
     t0 = time.time()
     logging.info("product productid to produce: %s", args.productid)
     logging.info("outputdir will be: %s", args.outputdir)
-    confproduct = get_product_id_parameters(args.configproducts,product_id=args.productid)
+    confproduct = get_product_id_parameters(
+        args.configproducts, product_id=args.productid
+    )
     (
         cpt_success,
         cpt_already,

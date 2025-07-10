@@ -19,4 +19,4 @@ dependencies:
   - geoviews
   - fsspec
   - pip:
-    - -e ../..
+      - -e ../..

@@ -28,7 +28,8 @@ def get_conf():
     conf = load(stream, Loader=Loader)
     return conf
 
-def get_product_id_parameters(file_path_products_description,product_id):
+
+def get_product_id_parameters(file_path_products_description, product_id):
     """
 
     Args:
@@ -39,4 +40,3 @@ def get_product_id_parameters(file_path_products_description,product_id):
     stream = open(file_path_products_description, "r")
     conf = load(stream, Loader=Loader)
     return conf[product_id]
-
