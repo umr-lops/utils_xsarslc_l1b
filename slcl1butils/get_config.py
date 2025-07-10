@@ -27,3 +27,16 @@ def get_conf():
     stream = open(config_path, "r")
     conf = load(stream, Loader=Loader)
     return conf
+
+def get_product_id_parameters(file_path_products_description,product_id):
+    """
+
+    Args:
+        file_path_products_description: str full path
+    Returns:
+        conf: dict
+    """
+    stream = open(file_path_products_description, "r")
+    conf = load(stream, Loader=Loader)
+    return conf[product_id]
+
