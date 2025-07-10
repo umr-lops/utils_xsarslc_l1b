@@ -38,7 +38,7 @@ warnings.simplefilter(action="ignore")
 conf = get_conf()
 
 
-def do_L1C_SAFE_from_L1B_SAFE(
+def do_l1c_safe_from_l1b_safe(
     full_safe_file,
     productid,
     outputdir,
@@ -66,16 +66,6 @@ def do_L1C_SAFE_from_L1B_SAFE(
     """
 
     # Ancillary data to be colocated
-    # ancillary_ecmwf = {}
-    # ancillary_ecmwf["resource"] = conf["ecmwf0.1_pattern"]
-    # ancillary_ecmwf["step"] = 1
-    # ancillary_ecmwf["name"] = "ecmwf_0100_1h"
-    #
-    # ancillary_ww3 = {}
-    # ancillary_ww3["resource"] = conf["ww3_pattern"]
-    # ancillary_ww3["step"] = 3
-    # ancillary_ww3["name"] = "ww3_global_yearly_3h"
-    # "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
     # ancillary_list = {
     #     "ecmwf_0100_1h": conf["auxilliary_dataset"]["ecmwf_0100_1h"],
     #     # "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
@@ -83,46 +73,19 @@ def do_L1C_SAFE_from_L1B_SAFE(
     # }
     ancillary_list = {}
     for iix, uu in enumerate(product_configuration["ancillary_raster_dataset"]):
-        # ancillary_list[uu] = product_configuration['ancillary_raster_dataset'][iix]
         ancillary_list[uu] = conf["auxilliary_dataset"][uu]
-    # ancillary_list = [ancillary_ecmwf]#,ancillary_ww3]
-    # ancillary_list = [ancillary_ecmwf, ancillary_ww3]
     logging.info("ancillary data: %s", ancillary_list)
-
-    # Processing Parameters:
-
-    # files = glob(os.path.join(full_safe_file, "*_XSP_*nc"))
-    # cpt_total = len(files)
     cpt = defaultdict(int)
-    # logging.info("Number of files: %s", cpt_total)
-    # if len(files) == 0:
-    #     return None
-
-    # Loop on L1B netCDF files (per slice)
-    # if dev:
-    # logging.info("dev mode -> only one L1B file to treat")
-    # files = files[0:1]
-    # pbar = tqdm(range(len(files)))
-    cpt_success = 0
-    cpt_already = 0
-    cpt_total = 1
-    cpt_ancillary_products_found = 0
-    # for ii in pbar:
-    # if dev:
-    #     pbar.set_description(
-    #         "sucess: %s/%s ancillary : %s, already: %s"
-    #         % (cpt_success, len(files), cpt_ancillary_products_found, cpt_already)
-    #     )
-    # else:
-    #     pbar.set_description()
-    # l1b_fullpath = files[ii]
+    cpt['file_successfuly_written'] = 0
+    cpt['output_file_already_present'] = 0
+    cpt['ancillary_products_expected'] = len(ancillary_list)
     l1b_fullpath = full_safe_file
     l1c_full_path, l1b_product_version = get_l1c_filepath(
         l1b_fullpath, productid=productid, outputdir=outputdir
     )
     if os.path.exists(l1c_full_path) and overwrite is False:
         logging.debug("%s already exists", l1c_full_path)
-        cpt_already += 1
+        cpt['output_file_already_present'] += 1
     else:
         dtwv, ancillaries_flag_added = enrich_onesubswath_l1b(
             l1b_fullpath,
@@ -131,8 +94,8 @@ def do_L1C_SAFE_from_L1B_SAFE(
             time_separation=time_separation,
             product_configuration=product_configuration,
         )
-        # if ancillary_product_found:
-        #     cpt_ancillary_products_found += 1
+        cpt['nb_imagette'] = len(dtwv['time'])
+
         for anc in ancillaries_flag_added:
             if ancillaries_flag_added[anc]:
                 cpt[anc + " OK"] += 1
@@ -146,10 +109,10 @@ def do_L1C_SAFE_from_L1B_SAFE(
         )
         # save_l1c_to_zarr(l1c_full_path, ds_intra, productid=productid, version_L1B=l1b_product_version)
         logging.debug("successfully wrote  %s", l1c_full_path)
-        cpt_success += 1
+        cpt['file_successfuly_written'] += 1
     logging.info("cpt %s", cpt)
     logging.info("last file written %s", l1c_full_path)
-    return cpt_success, cpt_already, cpt_total, cpt_ancillary_products_found
+    return cpt
 
 
 def enrich_onesubswath_l1b(
@@ -188,7 +151,6 @@ def enrich_onesubswath_l1b(
         time_separation=time_separation,
         crop_limits=product_configuration["crop_xspectra"],
     )
-
     # ====================
     # COLOC
     # ====================
@@ -412,7 +374,6 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     # Arranging & saving Results
     # Building the output datatree
     ds_intra = netcdf_compliant(ds_intra)
-
     ds_intra.attrs["version_l1butils"] = slcl1butils.__version__
     ds_intra.attrs["L1C_product_version"] = productid_L1C
     ds_intra.attrs["processor"] = __file__
@@ -489,12 +450,8 @@ def main():
     confproduct = get_product_id_parameters(
         args.configproducts, product_id=args.productid
     )
-    (
-        cpt_success,
-        cpt_already,
-        cpt_total,
-        cpt_ancillary_products_found,
-    ) = do_L1C_SAFE_from_L1B_SAFE(
+
+    cpt = do_l1c_safe_from_l1b_safe(
         args.l1bsafe,
         productid=args.productid,
         product_configuration=confproduct,
@@ -505,16 +462,10 @@ def main():
         dev=args.dev,
     )
     logging.info(
-        "file written: %s/%s ancillary : %s, already: %s",
-        cpt_success,
-        cpt_total,
-        cpt_ancillary_products_found,
-        cpt_already,
+        "counters : %s",cpt
     )
-    if cpt_already + cpt_success == cpt_total:
-        logging.info("successful L1C processing")
-    else:
-        logging.info("there is at least an error in this processing")
+
+    logging.info("successful L1C processing")
     logging.info("outputdir was: %s", args.outputdir)
     logging.info("peak memory usage: %s Mbytes", get_memory_usage())
     logging.info("done in %1.3f min", (time.time() - t0) / 60.0)
