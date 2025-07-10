@@ -1,6 +1,6 @@
+#!/usr/bin/env python
 import logging
 
-#!/usr/bin/env python
 import numpy as np
 import xarray as xr
 from shapely import geometry, wkt
@@ -30,7 +30,7 @@ def get_swath_tiles_polygons_from_l1bgroup(
     coordinates = {}
     variables = {}
     poly_tiles = []
-    ibursts = []
+    # ibursts = []
     poly_bursts = []
     itile_samples = []
     itile_lines = []
@@ -51,7 +51,7 @@ def get_swath_tiles_polygons_from_l1bgroup(
     for ss in l1b_ds["sigma0"].sizes:
         if ss != "pol":
             sizes_without_pol[ss] = l1b_ds["sigma0"].sizes[ss]
-    indexX = xndindex(l1b_ds["sigma0"].sizes)
+    # indexX = xndindex(l1b_ds["sigma0"].sizes)
 
     gege = xndindex(
         sizes_without_pol
@@ -161,7 +161,7 @@ def get_swath_tiles_polygons_from_l1bfile(l1b_file, polarization, ik=0, **kwargs
     Returns:
 
     """
-    swath_only = False
+    # swath_only = False
     # Initialisation of output structures
     _variables = None
     polygons = {}

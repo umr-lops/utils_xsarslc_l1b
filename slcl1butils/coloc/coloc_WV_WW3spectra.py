@@ -1,10 +1,10 @@
-import datetime
 import logging
 import os
 
 import numpy as np
 import xarray as xr
 
+from slcl1butils.compute.compute_from_l1b import get_start_date_from_attrs
 from slcl1butils.legacy_ocean.ocean.xPolarSpectrum import find_closest_ww3
 
 # from ocean.xspectrum import from_ww3
@@ -13,34 +13,52 @@ from slcl1butils.legacy_ocean.ocean.xspectrum import from_ww3
 from slcl1butils.symmetrize_l1b_spectra import symmetrize_xspectrum
 
 
-def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
+def resampleWW3spectra_on_SAR_cartesian_grid(dsar) -> (xr.Dataset, bool, bool):
     """
 
     Args:
-        dsar: xarray.core.Dataset WV Level-1B IFREMER dataset
+        dsar: xarray.core.Dataset WV Level-1B Ifremer dataset for one tile of one imagette
 
     Returns:
-
+        dsar: xr.Dataset
+        flag_ww3spectra_added: bool
+        flag_ww3spectra_found: bool
     """
     # basewv = os.path.basename(l1bwv)
     # datedt = datetime.datetime.strptime(basewv.split('-')[4],'%Y%m%dt%H%M%S')
-    xs2tau = dsar["xspectra_2tau_Re"] + 1j * dsar["xspectra_2tau_Im"]
-    xs2tau = xs2tau.assign_coords(
-        {
-            "k_rg": xs2tau["k_rg"].mean(
-                dim=set(xs2tau["k_rg"].dims) - set(["freq_sample"]), keep_attrs=True
+    xsNtau = {}
+    for tautau in ["2tau", "1tau"]:
+        # temporarily change coord for xpsectra and remove them from the ds
+        if "xspectra_%s_Re" % tautau in dsar:
+            xsntau = (
+                dsar["xspectra_%s_Re" % tautau] + 1j * dsar["xspectra_%s_Im" % tautau]
             )
-        }
-    ).swap_dims({"freq_sample": "k_rg", "freq_line": "k_az"})
-    xs2tau = symmetrize_xspectrum(xs2tau).squeeze(dim="2tau")
-    xs2tau.attrs = dsar["xspectra_2tau_Re"].attrs
-    # replace the half spectrum by a single variable, to save complexe values only possibility is zarr
-    dsar = dsar.drop_vars(["xspectra_2tau_Re", "xspectra_2tau_Im"])
-    dsar = dsar.drop_dims(["freq_sample", "freq_line"])
-    dsar["xspectra_2tau"] = xs2tau
-    start_date_dt = datetime.datetime.strptime(
-        dsar.attrs["start_date"], "%Y-%m-%d %H:%M:%S.%f"
-    )
+            xsntau = xsntau.assign_coords(
+                {
+                    "k_rg": xsntau["k_rg"].mean(
+                        dim=set(xsntau["k_rg"].dims) - set(["freq_sample"]),
+                        keep_attrs=True,
+                    )
+                }
+            ).swap_dims({"freq_sample": "k_rg", "freq_line": "k_az"})
+            if xsntau[tautau].size == 1:
+                xsntau = symmetrize_xspectrum(xsntau).squeeze(dim=tautau)
+            else:
+                xsntau = symmetrize_xspectrum(xsntau)
+            xsntau.attrs = dsar["xspectra_%s_Re" % tautau].attrs
+            xsNtau[tautau] = xsntau
+            # replace the half spectrum by a single variable, to save complexe values only possibility is zarr
+            dsar = dsar.drop_vars(
+                ["xspectra_%s_Re" % tautau, "xspectra_%s_Im" % tautau]
+            )
+    dsar = dsar.drop_dims(
+        ["freq_sample", "freq_line"]
+    )  # this line remove all the other variable depending on freq_sample,freq_line e.g. xspectra_1tau_Im
+    for tautau in xsNtau:
+        # put back the cross spectra
+        dsar["xspectra_%s" % tautau] = xsNtau[tautau]
+    xs2tau = xsNtau["2tau"]
+    start_date_dt = get_start_date_from_attrs(ds=dsar)
     # unit = basewv.split('-')[0]
     # unit_long = 'sentinel-1'+unit[-1]
     flag_ww3spectra_added = False
@@ -66,7 +84,7 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
             rotate = 90 + heading  # deg clockwise wrt North
             logging.debug("rotate:%s", rotate)
             # add the raw  EFTH(f,dir) spectra from WW3
-            dsww3raw = xr.open_dataset(pathww3sp)
+            dsww3raw = xr.open_dataset(pathww3sp).load()
             # add the interpolated cartesian EFTH(kx,ky) spectra from WW3
             ds_ww3_cartesian = from_ww3(
                 pathww3sp,
@@ -80,7 +98,6 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
                 time=start_date_dt,
             )  # TODO use sensingTime
             ds_ww3_cartesian.attrs["source"] = "ww3"
-            # TODO: check kx ky names to be same as the one from intra burst ds
             indiceww3spectra = find_closest_ww3(
                 ww3_path=pathww3sp, lon=lonwv, lat=latwv, time=start_date_dt
             )
@@ -89,12 +106,23 @@ def resampleWW3spectra_on_SAR_cartesian_grid(dsar):
             ds_ww3_cartesian = ds_ww3_cartesian.swap_dims(
                 {"kx": "k_rg", "ky": "k_az"}
             ).T
+            ds_ww3_cartesian = ds_ww3_cartesian.rename({"time": "time_ww3"})
+            rawspww3 = rawspww3.rename({"time": "time_ww3"})
             dsar = xr.merge([dsar, ds_ww3_cartesian, rawspww3])
             flag_ww3spectra_added = True
     return dsar, flag_ww3spectra_added, flag_ww3spectra_found
 
 
-def get_ww3RAWspectra_path_from_date(datedt):
+def get_ww3RAWspectra_path_from_date(datedt) -> str:
+    """
+
+
+    Args:
+        datedt: datetime.datetime
+
+    Returns:
+
+    """
     from slcl1butils.get_config import get_conf
 
     conf = get_conf()
