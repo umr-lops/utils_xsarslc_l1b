@@ -25,7 +25,6 @@ from slcl1butils.coloc.coloc_IW_WW3spectra import (
 from slcl1butils.coloc.coloc_XSP_with_GRD import add_grd_ifr_wind
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
 from slcl1butils.compute.homogeneous_output import add_missing_variables
-from slcl1butils.get_config import get_conf
 from slcl1butils.get_polygons_from_l1b import get_swath_tiles_polygons_from_l1bgroup
 from slcl1butils.raster_readers import (
     ecmwf_0100_1h,
@@ -34,27 +33,30 @@ from slcl1butils.raster_readers import (
     ww3_IWL1Btrack_hindcasts_30min,
 )
 from slcl1butils.utils import get_l1c_filepath, get_memory_usage, netcdf_compliant
-
+from slcl1butils.get_config import get_conf, get_product_id_parameters
 warnings.simplefilter(action="ignore")
 conf = get_conf()
 
 
 def do_L1C_SAFE_from_L1B_SAFE(
     full_safe_file,
-    version,
+    product_id,
+    product_configuration,
     outputdir,
     ancillary_list,
     colocat=True,
     time_separation="2tau",
     overwrite=False,
     output_format="nc",
+
     dev=False,
 ):
     """
 
     Args:
         full_safe_file: str (e.g. /path/to/l1b-ifremer-dataset/..SAFE)
-        version: str version of the product to generate
+        product_id: str version of the product to generate
+        product_configuration: dict with options related to the product ID
         outputdir: str where to store l1c netcdf files
         ancillary_list: dict of dict with names of the dataset (defined in conf.yaml or localconfig.yaml) to be colocated
         colocat: bool
@@ -110,7 +112,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
         pbar.set_description("")
         l1b_fullpath = files[ii]
         l1c_full_path = get_l1c_filepath(
-            l1b_fullpath, version=version, outputdir=outputdir
+            l1b_fullpath, version=product_id, outputdir=outputdir
         )
         if os.path.exists(l1c_full_path) and overwrite is False:
             logging.debug("%s already exists", l1c_full_path)
@@ -121,6 +123,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
                 ancillary_list=ancillary_list,
                 colocat=colocat,
                 time_separation=time_separation,
+                product_configuration=product_configuration,
             )
             # add source L1B product
             ds_intra.attrs["L1B_XSP_PATH"] = os.path.dirname(l1b_fullpath)
@@ -161,7 +164,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
             #      # xspectra_2tau_Re(burst, tile_line, tile_sample, freq_line, freq_sample, \2tau)
             ds_intra = netcdf_compliant(ds_intra)
             ds_inter = netcdf_compliant(ds_inter)
-            save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version=version)
+            save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version=product_id)
             cpt["saved_in_nc"] += 1
 
     logging.info("cpt: %s", cpt)
@@ -169,12 +172,13 @@ def do_L1C_SAFE_from_L1B_SAFE(
 
 
 def enrich_onesubswath_l1b(
-    l1b_fullpath, ancillary_list=None, colocat=True, time_separation="2tau"
+    l1b_fullpath,product_configuration, ancillary_list=None, colocat=True, time_separation="2tau"
 ):
     """
 
     Args:
         l1b_fullpath: str one single sub-swath
+        product_configuration: dict
         ancillary_list: dict
         colocat: cool
         time_separation: str
@@ -196,13 +200,15 @@ def enrich_onesubswath_l1b(
     burst_type = "intra"
 
     xs_intra, ds_intra = compute_xs_from_l1b(
-        l1b_fullpath, burst_type=burst_type, time_separation=time_separation
+        l1b_fullpath, burst_type=burst_type, time_separation=time_separation,
+        crop_limits=product_configuration["crop_xspectra"],variables2drop=product_configuration['variables2drop']
     )
     # Interburst x-spectra
     burst_type = "inter"
     time_separation = "None"
     xs_inter, ds_inter = compute_xs_from_l1b(
-        l1b_fullpath, burst_type=burst_type, time_separation=time_separation
+        l1b_fullpath, burst_type=burst_type, time_separation=time_separation,
+        crop_limits=product_configuration["crop_xspectra"], variables2drop=product_configuration['variables2drop']
     )
     # ====================
     # COLOC
@@ -350,14 +356,14 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
     return ds_intra, ds_inter, ancillary_fields_added
 
 
-def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version):
+def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, product_id):
     """
 
     Args:
         l1c_full_path: str
         ds_intra: xr.Dataset intra burst
         ds_inter: xr.Dataset inter burst
-        version : str (e.g. 1.4)
+        product_id : str (e.g. BXX)
 
     Returns:
 
@@ -372,7 +378,7 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version):
     dt[burst_type + "burst"] = DataTree(ds_inter)
 
     dt.attrs["version_slcl1butils"] = slcl1butils.__version__
-    dt.attrs["product_version"] = version
+    dt.attrs["product_version"] = product_id
     dt.attrs["processor"] = __file__
     dt.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
     # Saving the results in netCDF
@@ -462,23 +468,32 @@ def main():
     t0 = time.time()
     logging.info("product version to produce: %s", args.version)
     logging.info("outputdir will be: %s", args.outputdir)
-    ancillary_list = {
-        "ecmwf_0100_1h": conf["auxilliary_dataset"]["ecmwf_0100_1h"],
-        # "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
-        "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
-    }
-    if args.ww3spectra:
+    confproduct = get_product_id_parameters(
+        args.configproducts, product_id=args.productid
+    )
+    ancillary_list = {}
+    for iix, uu in enumerate(confproduct["ancillary_raster_dataset"]):
+        ancillary_list[uu] = conf["auxilliary_dataset"][uu]
+    # ancillary_list = {
+    #     "ecmwf_0100_1h": conf["auxilliary_dataset"]["ecmwf_0100_1h"],
+    #     # "ww3hindcast_field": conf["auxilliary_dataset"]["ww3hindcast_field"],
+    #     "ww3hindcast_field": conf["auxilliary_dataset"]["ww3_global_cciseastate"],
+    # }
+    # if args.ww3spectra:
+    if confproduct['add_ww3spectra'] is True:
         # ancillary_list["ww3hindcast_spectra"] = conf["auxilliary_dataset"][
         #    "ww3hindcast_spectra"
         # ]
         ancillary_list["ww3CCIseastate_spectra"] = conf["auxilliary_dataset"][
             "ww3CCIseastate_spectra"
         ]
-    if args.grdwind is True:
+    # if args.grdwind is True:
+    if confproduct['add_grdwind'] is True:
         ancillary_list["s1grd"] = conf["auxilliary_dataset"]["s1iwgrdwind"]
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
-        version=args.version,
+        product_configuration=confproduct,
+        product_id=args.version,
         outputdir=args.outputdir,
         ancillary_list=ancillary_list,
         colocat=True,
