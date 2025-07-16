@@ -1,5 +1,4 @@
 import logging
-import pdb
 from datetime import datetime
 
 import numpy as np
@@ -60,7 +59,6 @@ def compute_xs_from_l1b(
             ds["k_rg"].isel(tile_line=0, tile_sample=0) <= crop_limits["rg"]
         )[0]
         indaz_to_keep = np.where(ds["k_az"] <= crop_limits["az"])[0]
-        pdb.set_trace()
         logging.info(
             "new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i",
             len(ds["freq_sample"]),
