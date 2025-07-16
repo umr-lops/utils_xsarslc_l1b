@@ -413,7 +413,7 @@ def save_l1c_to_zarr(l1c_full_path, ds_intra, ds_inter, version):
 
 def main():
     time.sleep(np.random.rand(1, 1)[0][0])  # to avoid issue with mkdir
-    parser = argparse.ArgumentParser(description="L1B->L1C")
+    parser = argparse.ArgumentParser(description="IW L1B->L1C")
     parser.add_argument("--verbose", action="store_true", default=False)
     parser.add_argument(
         "--overwrite",
@@ -423,7 +423,7 @@ def main():
         required=False,
     )
     parser.add_argument(
-        "--l1bsafe", required=True, help="L1B IW XSP SAFE (Sentinel-1 IFREMER) path"
+        "--l1bsafe", required=True, help="input Level-1B IW XSP SAFE (Sentinel-1 IFREMER) path"
     )
     parser.add_argument(
         "--outputdir",
@@ -432,28 +432,24 @@ def main():
         default=conf["iw_outputdir"],
     )
     parser.add_argument(
-        "--version",
-        help="set the output product version (e.g. 0.3) default version will be read from config.yaml",
+        "--productid",
+        help="set the output product version (e.g. BXX) default version will be read from config.yaml",
         required=False,
-        default=conf["l1c_iw_version"],
-    )
-    parser.add_argument(
-        "--ww3spectra",
-        action="store_true",
-        default=False,
-        help="add WW3 spectra to L1C [default is False]",
-    )
-    parser.add_argument(
-        "--grdwind",
-        action="store_true",
-        default=False,
-        help="add GRD Ifremer (cyclobs) Wind product to L1C [default is False]",
+        default=conf["l1c_iw_productid"],
     )
     parser.add_argument(
         "--dev",
         action="store_true",
         default=False,
         help="dev mode stops the computation early",
+    )
+    parser.add_argument(
+        "--configproducts",
+        help="path of a yaml config file where the different versions of products are defined [optional]",
+        required=False,
+        default=os.path.join(
+            os.path.dirname(slcl1butils.__file__), "BXX_description.yml"
+        ),
     )
     args = parser.parse_args()
     fmt = "%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(message)s"
@@ -466,8 +462,9 @@ def main():
             level=logging.INFO, format=fmt, datefmt="%d/%m/%Y %H:%M:%S", force=True
         )
     t0 = time.time()
-    logging.info("product version to produce: %s", args.version)
-    logging.info("outputdir will be: %s", args.outputdir)
+    logging.info("Level-1C XSP product version to generate: %s", args.productid)
+    logging.info("output directory will be: %s", args.outputdir)
+    logging.info('file defining the products is : %s',args.configproducts)
     confproduct = get_product_id_parameters(
         args.configproducts, product_id=args.productid
     )
@@ -493,7 +490,7 @@ def main():
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
         product_configuration=confproduct,
-        product_id=args.version,
+        product_id=args.productid,
         outputdir=args.outputdir,
         ancillary_list=ancillary_list,
         colocat=True,
