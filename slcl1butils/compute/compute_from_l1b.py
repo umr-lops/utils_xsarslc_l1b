@@ -27,7 +27,11 @@ def get_start_date_from_attrs(ds) -> datetime:
 
 
 def compute_xs_from_l1b(
-    _file, burst_type="intra", time_separation="2tau",crop_limits=None,variables2drop=None
+    _file,
+    burst_type="intra",
+    time_separation="2tau",
+    crop_limits=None,
+    variables2drop=None,
 ) -> (xr.DataArray, xr.Dataset):
     """
 
@@ -52,7 +56,9 @@ def compute_xs_from_l1b(
         ds = xr.open_dataset(_file, group=burst_type + "burst")
     if crop_limits is not None:
         logging.info("crop spectra with wave numbers below : %s", crop_limits)
-        indrg_to_keep = np.where(ds["k_rg"].isel(tile_line=0,tile_sample=0) <= crop_limits["rg"])[0]
+        indrg_to_keep = np.where(
+            ds["k_rg"].isel(tile_line=0, tile_sample=0) <= crop_limits["rg"]
+        )[0]
         indaz_to_keep = np.where(ds["k_az"] <= crop_limits["az"])[0]
         pdb.set_trace()
         logging.info(
@@ -81,7 +87,7 @@ def compute_xs_from_l1b(
                 logging.warning("%s not present in the dataset %s", vv, burst_type)
             else:
                 consolidated_list.append(vv)
-        logging.info('variables to drop : %s',consolidated_list)
+        logging.info("variables to drop : %s", consolidated_list)
         ds = ds.drop_vars(consolidated_list)
     else:  # inter burst case
         pass  # no variable to remove in interburst
