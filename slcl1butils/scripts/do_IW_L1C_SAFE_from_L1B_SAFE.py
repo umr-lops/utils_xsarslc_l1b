@@ -164,7 +164,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
             #      # xspectra_2tau_Re(burst, tile_line, tile_sample, freq_line, freq_sample, \2tau)
             ds_intra = netcdf_compliant(ds_intra)
             ds_inter = netcdf_compliant(ds_inter)
-            save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, version=product_id)
+            save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, product_id=product_id)
             cpt["saved_in_nc"] += 1
 
     logging.info("cpt: %s", cpt)
