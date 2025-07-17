@@ -9,10 +9,11 @@ echo start
 # inputs
 
 #$1 str l1bsafe
-#$2 str productid of the run: 1.5 for instance
+#$2 str productid of the run: B17 for instance
 #$3 str outputdir
 #$4 str path of python micromamba env (without /bin/python)
 #$5 str overwrite [optional]
+#$6 str ww3spectra [optional]
 myvariable=$(whoami)
 . /appli/anaconda/latest/etc/profile.d/conda.sh
 #conda activate /home/datawork-cersat-public/cache/project/mpc-sentinel1/workspace/mamba/envs/xsar_oct22
@@ -22,8 +23,8 @@ myvariable=$(whoami)
 
 exe=do_IW_L1C_SAFE_from_L1B_SAFE
 
-SHORT=s:,p:,o:,r,e:,h
-LONG=safe:,productid:,outputdir:,redo,env:,help
+SHORT=s:,p:,c:,o:,r,e:,h
+LONG=safe:,productid:,configprod:,outputdir:,redo,env:,help
 OPTS=$(getopt -a -n do_IW_L1C_SAFE_from_L1B_SAFE --options $SHORT --longoptions $LONG -- "$@")
 eval set -- "$OPTS"
 help()
@@ -31,6 +32,7 @@ help()
     echo "Usage: do_IW_L1C_SAFE_from_L1B_SAFE [ -s | --safe ]
                [ -o | --outputdir ]
                [ -p | --productid ]
+               [ -c | --configprod ]
                [ -r | --redo ]
                [ -e | --env ]
                [ -h | --help  ]"
@@ -46,6 +48,10 @@ do
       ;;
     -p | --productid )
       productid="$2"
+      shift 2
+      ;;
+    -c | --configprod )
+      configprod="$2"
       shift 2
       ;;
     -o | --outputdir )
@@ -76,9 +82,11 @@ done
 echo "redo: "$redo
 echo "outputdir: "$outputdir
 echo "productid: "$productid
+echo 'configuration file forproducts: '$configprod
 echo "safe: "$safe
 echo "env: "$env
-options='--l1bsafe '$safe" --outputdir "$outputdir" --productid "$productid
+options='--l1bsafe '$safe" --outputdir "$outputdir" --productid "$productid " --configproducts "$configprod
+
 #if [ "$redo" == "--overwrite" ];
 if [ ! -z "$redo" ]
 then
