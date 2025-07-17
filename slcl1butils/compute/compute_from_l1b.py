@@ -26,13 +26,21 @@ def get_start_date_from_attrs(ds) -> datetime:
 
 
 def compute_xs_from_l1b(
-    _file, burst_type="intra", time_separation="2tau"
+    _file,
+    burst_type="intra",
+    time_separation="2tau",
+    crop_limits=None,
+    variables2drop=None,
 ) -> (xr.DataArray, xr.Dataset):
     """
+
+    method to read L1B, [crop xspectra], [drop variables], reconstruct complexe xspectra, rename coords
 
     :params _file (str): full path L1B nc file
     :params burst_type (str): intra or inter
     :params time_separation (str): 2tau or 1tau...
+    :params crop_limits (dict): to crop the variable depending on freq_sample and freq_line e.g. {'rg':0.15,'az':0.20} [optional,default= None -> no cropping]
+    :params variables2drop (list): variables to drop before writing Level-1C file [ optional, default is no variable to drop]
 
     :Returns:
 
@@ -45,23 +53,39 @@ def compute_xs_from_l1b(
         ds = xr.open_dataset(_file, group=burst_type)
     else:
         ds = xr.open_dataset(_file, group=burst_type + "burst")
-
+    if crop_limits is not None:
+        logging.info("crop spectra with wave numbers below : %s", crop_limits)
+        indrg_to_keep = np.where(
+            ds["k_rg"].isel(tile_line=0, tile_sample=0) <= crop_limits["rg"]
+        )[0]
+        indaz_to_keep = np.where(ds["k_az"] <= crop_limits["az"])[0]
+        logging.info(
+            "new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i",
+            len(ds["freq_sample"]),
+            len(ds["freq_line"]),
+            len(indrg_to_keep),
+            len(indaz_to_keep),
+        )
+        ds = ds.isel(freq_sample=indrg_to_keep, freq_line=indaz_to_keep)
     # ds = dt[burst_type+'burst_xspectra'].to_dataset()
     # drop variables
 
     logging.debug("time_separation : %s", time_separation)
     if burst_type == "intra":
         consolidated_list = []
-        list_to_drop = ["var_xspectra_0tau", "var_xspectra_1tau", "var_xspectra_2tau"]
+        if variables2drop is None:
+            variables2drop = []
+        # list_to_drop = ["var_xspectra_0tau", "var_xspectra_1tau", "var_xspectra_2tau"]
         for toto in range(0, 2):
             if int(time_separation[0]) != toto:
-                list_to_drop.append("xspectra_" + str(toto) + "tau" + "_Re")
-                list_to_drop.append("xspectra_" + str(toto) + "tau" + "_Im")
-        for vv in list_to_drop:
+                variables2drop.append("xspectra_" + str(toto) + "tau" + "_Re")
+                variables2drop.append("xspectra_" + str(toto) + "tau" + "_Im")
+        for vv in variables2drop:
             if vv not in ds:
                 logging.warning("%s not present in the dataset %s", vv, burst_type)
             else:
                 consolidated_list.append(vv)
+        logging.info("variables to drop : %s", consolidated_list)
         ds = ds.drop_vars(consolidated_list)
     else:  # inter burst case
         pass  # no variable to remove in interburst

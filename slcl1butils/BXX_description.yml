@@ -1,0 +1,64 @@
+# this config file is meant to centralize options for a given product-id and would prevent to modify the source code or mix informations
+# a user could then only provide the product-id without specifying all the options
+B17:
+  xspec-config: tiles17.5km
+  mode: IW
+  mission: Sentinel-1
+  conda-env: /home/datawork-cersat-public/project/mpc-sentinel1/workspace/mamba/envs/l1cB17
+  docker-image:
+  singularity-image:
+  variables2drop: ["var_xspectra_0tau", "xspectra_0tau_Re", "xspectra_0tau_Im"]
+  crop_xspectra:
+    rg: 0.15
+    az: 0.15
+  add_ww3spectra: False
+  add_grdwind: True
+  tag: slcl1butils-2025.7.11.dev1+g83c29a2
+  ancillary_raster_dataset: ['ecmwf_0100_1h','ww3_global_cciseastate']
+  original_purpose: "produce some IW L1C with GRD cyclobs wind speed colocated."
+B18:
+  xspec-config: tiles17.5km
+  mode: WV
+  mission: Sentinel-1
+  conda-env: /home/datawork-cersat-public/project/mpc-sentinel1/workspace/mamba/envs/l1cB18
+  docker-image:
+  singularity-image:
+  variables2drop: ["var_xspectra_0tau", "xspectra_0tau_Re", "xspectra_0tau_Im"]
+  crop_xspectra:
+    rg: 0.15
+    az: 0.15
+  add_ww3spectra: False
+  tag: https://github.com/umr-lops/utils_xsarslc_l1b/
+  ancillary_raster_dataset: ['ecmwf_0100_1h','ww3_global_cciseastate']
+  original_purpose: "produce some WV L1C in the new format 1 SAFE-SLC->XSP 1B->XSP 1C: 2 nc XSP (follow ENVISAT format)"
+B19:
+  xspec-config: tiles17.5km
+  mode: WV
+  mission: ENVISAT
+  conda-env: /home/datawork-cersat-public/project/mpc-sentinel1/workspace/mamba/envs/l1cB19
+  docker-image:
+  singularity-image:
+  variables2drop: ["var_xspectra_0tau", "xspectra_0tau_Re", "xspectra_0tau_Im"]
+  crop_xspectra:
+    rg: 0.14
+    az: 0.14
+  add_ww3spectra: True
+  tag: https://github.com/umr-lops/utils_xsarslc_l1b/
+  ancillary_raster_dataset: ['ecmwf_0100_1h','ww3_global_cciseastate']
+  original_purpose: "dev/test PR#99 for ENVISAT"
+B20:
+  xspec-config: tiles17.5km
+  mode: WV
+  mission: Sentinel-1
+  conda-env: /home/datawork-cersat-public/project/mpc-sentinel1/workspace/mamba/envs/l1cB20
+  docker-image:
+  singularity-image:
+  variables2drop: ["var_xspectra_0tau", "xspectra_0tau_Re", "xspectra_0tau_Im"]
+  crop_xspectra:
+    rg: 0.15
+    az: 0.15
+  add_ww3spectra: True
+  tag: https://github.com/umr-lops/utils_xsarslc_l1b/
+  ancillary_raster_dataset: ['ecmwf_0100_1h','ww3_global_cciseastate']
+  original_purpose: "produce some WV L1C in the new format 1 SAFE-SLC->XSP 1B->XSP 1C: 2 nc XSP (follow ENVISAT format)"
+

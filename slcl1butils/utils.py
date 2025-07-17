@@ -158,14 +158,13 @@ def xndindex(sizes):
         yield {k: l for k, l in zip(d, k[0])}
 
 
-def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
+def get_l1c_filepath(l1b_fullpath, version, outputdir=None)->str:
     """
 
     Args:
         l1b_fullpath: str .nc l1b full path
         version : str (eg. 1.2 or B01)
         outputdir: str [optional] default is l1c subdirectory // l1b inputs
-        makedir: bool [optional] default is True
     Returns:
         l1c_full_path: str
     """
@@ -222,8 +221,8 @@ def get_l1c_filepath(l1b_fullpath, version, outputdir=None, makedir=True):
     l1c_full_path = l1c_full_path.replace(lastpiece, "-" + version.lower() + ".nc")
 
     logging.debug("File out: %s ", l1c_full_path)
-    if not os.path.exists(os.path.dirname(l1c_full_path)) and makedir:
-        os.makedirs(os.path.dirname(l1c_full_path), 0o0775)
+    print('l1c_full_path',l1c_full_path)
+    os.makedirs(os.path.dirname(l1c_full_path), 0o0775,exist_ok=True)
     l1c_full_path = os.path.normpath(l1c_full_path).replace(
         "\\", "/"
     )  # platform windows security

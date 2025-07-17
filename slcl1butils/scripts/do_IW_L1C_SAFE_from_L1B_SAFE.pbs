@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -l walltime=06:40:00
-#PBS -N L1B-Ciw
+#PBS -N L1B2Ciw
 #PBS -m n
 
 # original memory was 1g but with ww3 spectra + SAR spectra it should be 2Go, now set in prun call
@@ -9,11 +9,10 @@ echo start
 # inputs
 
 #$1 str l1bsafe
-#$2 str version of the run: 1.5 for instance
+#$2 str productid of the run: 1.5 for instance
 #$3 str outputdir
 #$4 str path of python micromamba env (without /bin/python)
 #$5 str overwrite [optional]
-#$6 str ww3spectra [optional]
 myvariable=$(whoami)
 . /appli/anaconda/latest/etc/profile.d/conda.sh
 #conda activate /home/datawork-cersat-public/cache/project/mpc-sentinel1/workspace/mamba/envs/xsar_oct22
@@ -23,16 +22,15 @@ myvariable=$(whoami)
 
 exe=do_IW_L1C_SAFE_from_L1B_SAFE
 
-SHORT=s:,v:,o:,r,w,e:,h
-LONG=safe:,version:,outputdir:,redo,ww3spectra,env:,help
+SHORT=s:,p:,o:,r,e:,h
+LONG=safe:,productid:,outputdir:,redo,env:,help
 OPTS=$(getopt -a -n do_IW_L1C_SAFE_from_L1B_SAFE --options $SHORT --longoptions $LONG -- "$@")
 eval set -- "$OPTS"
 help()
 {
     echo "Usage: do_IW_L1C_SAFE_from_L1B_SAFE [ -s | --safe ]
                [ -o | --outputdir ]
-               [ -v | --version ]
-               [ -w | --ww3spectra ]
+               [ -p | --productid ]
                [ -r | --redo ]
                [ -e | --env ]
                [ -h | --help  ]"
@@ -46,8 +44,8 @@ do
       safe="$2"
       shift 2
       ;;
-    -v | --version )
-      version="$2"
+    -p | --productid )
+      productid="$2"
       shift 2
       ;;
     -o | --outputdir )
@@ -56,10 +54,6 @@ do
       ;;
     -r | --redo )
       redo="true"
-      shift  #past argument
-      ;;
-    -w | --ww3spectra)
-      ww3spectra="true"
       shift  #past argument
       ;;
     -e | --env )
@@ -81,45 +75,19 @@ done
 
 echo "redo: "$redo
 echo "outputdir: "$outputdir
-echo "version: "$version
+echo "productid: "$productid
 echo "safe: "$safe
-echo "ww3spectra: "$ww3spectra
 echo "env: "$env
-options='--l1bsafe '$safe" --outputdir "$outputdir" --version "$version
-if [ -z "$ww3spectra" ]
-then
-    echo 'ww3 spectra not added'
-  else
-    options=$options" --ww3spectra "
-fi
+options='--l1bsafe '$safe" --outputdir "$outputdir" --productid "$productid
 #if [ "$redo" == "--overwrite" ];
 if [ ! -z "$redo" ]
 then
     options=$options" --overwrite "
   else
-    echo 'no overwritting of L1B files'
+    echo 'no overwritting of Level-1C XSP files'
 fi
 
 echo 'final options: '$options
 conda activate $env
 which python
 $exe $options
-
-
-
-
-
-
-
-
-
-
-#echo 'number of arguments' $#
-#echo 'fourth arg' $4
-#if [ "$4" == "--overwrite" ]; then
-#  echo 'overwrite is ON'
-#  $exe  --l1bsafe $1 --version $2 --outputdir $3 --overwrite
-#else
-#  echo 'overwrite is OFF'
-#  $exe  --l1bsafe $1 --version $2 --outputdir $3
-#fi
