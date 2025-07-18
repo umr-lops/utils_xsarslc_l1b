@@ -85,7 +85,7 @@ echo "productid: "$productid
 echo 'configuration file forproducts: '$configprod
 echo "safe: "$safe
 echo "env: "$env
-options='--l1bsafe '$safe" --outputdir "$outputdir" --productid "$productid " --configproducts "$configprod
+options='--l1bsafe '$safe" --outputdir "$outputdir" --productid "$productid" --configproducts "$configprod
 
 #if [ "$redo" == "--overwrite" ];
 if [ ! -z "$redo" ]
