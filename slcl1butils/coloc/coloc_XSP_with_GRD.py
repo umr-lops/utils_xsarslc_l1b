@@ -291,5 +291,7 @@ def add_grd_ifr_wind(
                 "no corresponding Ifremer Sentinel-1 GRD wind product for %s",
                 l1bgrid.attrs["name"],
             )
+    else:
+        logging.info("no Level-2 cycblobs wind.")
     logging.info("counters: %s", cpt)
     return l1cgrids, cpt
