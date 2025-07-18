@@ -222,10 +222,10 @@ def enrich_onesubswath_l1b(
     # ====================
     # COLOC
     # ====================
-    flag_ancillaries = {}
+    flag_ancillaries = defaultdict(int)
     if colocat:
         for ancillary_name in ancillary_list:
-            logging.debug("ancillary: %s", ancillary_name)
+            logging.info("ancillary: %s", ancillary_name)
             ds_intra, ds_inter, ancillary_fields_added = append_ancillary_field(
                 ancillary_list[ancillary_name], ds_intra, ds_inter
             )
@@ -240,7 +240,7 @@ def enrich_onesubswath_l1b(
                 idx = uu
         ww3spectra_matching_name = ancillary_list[idx]["name"]
         logging.info(
-            "the product used to add wave spectra is: %s", ww3spectra_matching_name
+            "the product to use for adding wave spectra is: %s", ww3spectra_matching_name
         )
         (
             ds_intra,
@@ -258,11 +258,13 @@ def enrich_onesubswath_l1b(
             dsar=ds_inter, xspeckind="inter", nameWW3sp_product=ww3spectra_matching_name
         )
         flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
-    if "s1grd" in ancillary_list:
-        for uui, uu in enumerate(ancillary_list):
-            if "s1grd" in uu:
-                idx = uu
-        entry_conf = ancillary_list[idx]
+    #if "s1grd" in ancillary_list:
+    if product_configuration["add_grdwind"] is True:
+        # for uui, uu in enumerate(ancillary_list):
+        #     if "s1grd" in uu:
+        #         idx = uu
+        # entry_conf = ancillary_list[idx]
+        entry_conf = conf["auxilliary_dataset"]['s1iwgrdwind']
         slcgrdlist = pd.read_csv(entry_conf["listing"], names=["slc", "grd"])
         l1cgrids, cpt = add_grd_ifr_wind(
             dsintra=ds_intra,
@@ -270,9 +272,14 @@ def enrich_onesubswath_l1b(
             confgrd=entry_conf,
             dfpairs_slc_grd=slcgrdlist,
         )
-        ds_intra = l1cgrids["intraburst"]
-        ds_inter = l1cgrids["interburst"]
-        logging.info("GRD wind added.")
+        logging.info('cpt GRD : %s',cpt)
+        if l1cgrids != {}:
+            ds_intra = l1cgrids["intraburst"]
+            ds_inter = l1cgrids["interburst"]
+            logging.info("GRD wind added.")
+            flag_ancillaries['GRD_wind_added'] += 1
+        else:
+            flag_ancillaries['GRD_wind_missing'] += 1
 
     return ds_intra, ds_inter, flag_ancillaries
 
@@ -496,8 +503,8 @@ def main():
             "ww3CCIseastate_spectra"
         ]
     # if args.grdwind is True:
-    if confproduct["add_grdwind"] is True:
-        ancillary_list["s1grd"] = conf["auxilliary_dataset"]["s1iwgrdwind"]
+    # if confproduct["add_grdwind"] is True:
+       # ancillary_list["s1grd"] = conf["auxilliary_dataset"]["s1iwgrdwind"]
     final_L1C_path = do_L1C_SAFE_from_L1B_SAFE(
         args.l1bsafe,
         product_configuration=confproduct,
