@@ -494,7 +494,7 @@ def main():
         "--productid",
         help="set the output product ID (e.g. B48) default product ID will be read from config.yaml",
         required=False,
-        default=conf["l1c_wv_version"],
+        default=conf["l1c_wv_productid"],
     )
     parser.add_argument(
         "--configproducts",
