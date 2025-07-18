@@ -54,13 +54,15 @@ def compute_xs_from_l1b(
     else:
         ds = xr.open_dataset(_file, group=burst_type + "burst")
     # when all the tiles of the subswath are over land -> there is (for now) no xspectra in the dataset
-    xspectra_present = "xspectra_2tau_Re" in ds.variables
+    xspectra_present = ("xspectra_2tau_Re" in ds.variables) or ("xspectra_Re" in ds.variables)
     if crop_limits is not None and xspectra_present is True:
         logging.info("crop spectra with wave numbers below : %s", crop_limits)
+        # select a tile on ocean
+        ods = ds.where(ds['land_flag']==False,drop=True)
         indrg_to_keep = np.where(
-            ds["k_rg"].isel(tile_line=0, tile_sample=0) <= crop_limits["rg"]
+            ods["k_rg"].isel(tile_line=0, tile_sample=0) <= crop_limits["rg"]
         )[0]
-        indaz_to_keep = np.where(ds["k_az"] <= crop_limits["az"])[0]
+        indaz_to_keep = np.where(ods["k_az"] <= crop_limits["az"])[0]
         logging.info(
             "new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i",
             len(ds["freq_sample"]),
