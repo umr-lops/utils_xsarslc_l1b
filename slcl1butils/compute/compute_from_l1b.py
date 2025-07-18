@@ -58,11 +58,21 @@ def compute_xs_from_l1b(
     if crop_limits is not None and xspectra_present is True:
         logging.info("crop spectra with wave numbers below : %s", crop_limits)
         # select a tile on ocean
-        ods = ds.where(ds['land_flag']==False,drop=True)
+
+        # Assuming 'ds' is your xarray.Dataset and it contains a 'land_flag' variable
+        # with dimensions ('tile_line', 'tile_sample')
+
+        # 1. Stack the tile dimensions
+        stacked = ds.stack(tile=('tile_line', 'tile_sample'))
+
+        # 2. Apply the where condition to select ocean tiles and drop land tiles
+        ocean_stacked = stacked.where(stacked['land_flag'] == False, drop=True)
+
         indrg_to_keep = np.where(
-            ods["k_rg"].isel(tile_line=0, tile_sample=0) <= crop_limits["rg"]
+            ocean_stacked["k_rg"].isel(tile=0) <= crop_limits["rg"]
         )[0]
-        indaz_to_keep = np.where(ods["k_az"] <= crop_limits["az"])[0]
+        indaz_to_keep = np.where(ocean_stacked["k_az"] <= crop_limits["az"])[0]
+        
         logging.info(
             "new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i",
             len(ds["freq_sample"]),
