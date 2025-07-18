@@ -53,7 +53,9 @@ def compute_xs_from_l1b(
         ds = xr.open_dataset(_file, group=burst_type)
     else:
         ds = xr.open_dataset(_file, group=burst_type + "burst")
-    if crop_limits is not None:
+    # when all the tiles of the subswath are over land -> there is (for now) no xspectra in the dataset
+    xspectra_present = 'xspectra_2tau_Re' in ds.variables
+    if crop_limits is not None and xspectra_present is True:
         logging.info("crop spectra with wave numbers below : %s", crop_limits)
         indrg_to_keep = np.where(
             ds["k_rg"].isel(tile_line=0, tile_sample=0) <= crop_limits["rg"]
@@ -89,6 +91,8 @@ def compute_xs_from_l1b(
         ds = ds.drop_vars(consolidated_list)
     else:  # inter burst case
         pass  # no variable to remove in interburst
+
+    # part to compute the complex cross spectra
 
     if burst_type == "intra" or burst_type == "":
         if (
