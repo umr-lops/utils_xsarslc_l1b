@@ -67,9 +67,12 @@ def compute_xs_from_l1b(
 
         # 2. Apply the where condition to select ocean tiles and drop land tiles
         ocean_stacked = stacked.where(stacked['land_flag'] == False, drop=True)
-
+        if 'tile' in ocean_stacked['k_rg'].coords:
+            k_rg_ref = ocean_stacked["k_rg"].isel(tile=0)
+        else:
+            k_rg_ref = ocean_stacked["k_rg"]
         indrg_to_keep = np.where(
-            ocean_stacked["k_rg"].isel(tile=0) <= crop_limits["rg"]
+            k_rg_ref <= crop_limits["rg"]
         )[0]
         indaz_to_keep = np.where(ocean_stacked["k_az"] <= crop_limits["az"])[0]
         
