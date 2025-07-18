@@ -292,6 +292,6 @@ def add_grd_ifr_wind(
                 l1bgrid.attrs["name"],
             )
     else:
-        logging.info('no Level-2 cycblobs wind.')
+        logging.info("no Level-2 cycblobs wind.")
     logging.info("counters: %s", cpt)
     return l1cgrids, cpt

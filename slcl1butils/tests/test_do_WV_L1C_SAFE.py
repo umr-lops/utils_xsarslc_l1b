@@ -3,7 +3,7 @@ import os
 # tests/scripts/test_do_WV_L1C_SAFE_from_L1B_SAFE.py
 import unittest
 from datetime import datetime
-from unittest.mock import ANY, MagicMock, call, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import numpy as np
 import xarray as xr

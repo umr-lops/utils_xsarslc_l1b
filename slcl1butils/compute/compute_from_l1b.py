@@ -54,7 +54,7 @@ def compute_xs_from_l1b(
     else:
         ds = xr.open_dataset(_file, group=burst_type + "burst")
     # when all the tiles of the subswath are over land -> there is (for now) no xspectra in the dataset
-    xspectra_present = 'xspectra_2tau_Re' in ds.variables
+    xspectra_present = "xspectra_2tau_Re" in ds.variables
     if crop_limits is not None and xspectra_present is True:
         logging.info("crop spectra with wave numbers below : %s", crop_limits)
         indrg_to_keep = np.where(
