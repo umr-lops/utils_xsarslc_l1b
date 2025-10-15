@@ -91,7 +91,7 @@ class TestWV_L1C_Processing(unittest.TestCase):
         self.assertIn("generation_date", mock_ds.attrs)
 
         # Verify the save function was called
-        mock_ds.to_netcdf.assert_called_once_with(l1c_path)
+        mock_ds.to_netcdf.assert_called_once_with(l1c_path, engine='h5netcdf'))
         mock_ds.close.assert_called_once()
 
     @patch("slcl1butils.scripts.do_WV_L1C_SAFE_from_L1B_SAFE.enrich_onesubswath_l1b")
