@@ -17,6 +17,7 @@ dependencies = [
     "xarray",
     "numpy",
     "netCDF4",
+    "h5netcdf",
     "shapely",
     'tqdm',
     "zarr",
