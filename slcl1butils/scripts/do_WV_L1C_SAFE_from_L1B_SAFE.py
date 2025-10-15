@@ -457,7 +457,7 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     ds_intra.attrs["L1B_product_version"] = productid_L1B
     # Saving the results in netCDF
 
-    ds_intra.to_netcdf(l1c_full_path)
+    ds_intra.to_netcdf(l1c_full_path, engine='h5netcdf')
     ds_intra.close()
     logging.debug("output file written successfully: %s", l1c_full_path)
 
