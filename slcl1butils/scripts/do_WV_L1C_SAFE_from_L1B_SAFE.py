@@ -25,7 +25,7 @@ from slcl1butils.compute.compute_from_l1b import (
     compute_xs_from_l1b_wv,
     get_start_date_from_attrs,
 )
-from slcl1butils.get_config import get_conf, get_product_id_parameters
+from slcl1butils.get_config import get_product_id_parameters
 from slcl1butils.raster_readers import (
     ecmwf_0100_1h,
     resource_strftime,
@@ -35,8 +35,6 @@ from slcl1butils.raster_readers import (
 from slcl1butils.utils import get_memory_usage, netcdf_compliant, xndindex
 
 warnings.simplefilter(action="ignore")
-conf = get_conf()
-
 
 def do_l1c_safe_from_l1b_safe(
     full_safe_file,
@@ -73,7 +71,7 @@ def do_l1c_safe_from_l1b_safe(
     # }
     ancillary_list = {}
     for iix, uu in enumerate(product_configuration["ancillary_raster_dataset"]):
-        ancillary_list[uu] = conf["auxilliary_dataset"][uu]
+        ancillary_list[uu] = product_configuration["auxilliary_dataset"][uu]
     logging.info("ancillary data: %s", ancillary_list)
     cpt = defaultdict(int)
     cpt["file_successfuly_written"] = 0
@@ -446,7 +444,7 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     """
     if os.path.exists(l1c_full_path):
         os.remove(l1c_full_path)
-    #
+
     # Arranging & saving Results
     # Building the output datatree
     ds_intra = netcdf_compliant(ds_intra)
@@ -455,8 +453,8 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     ds_intra.attrs["processor"] = __file__
     ds_intra.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
     ds_intra.attrs["L1B_product_version"] = productid_L1B
+    
     # Saving the results in netCDF
-
     ds_intra.to_netcdf(l1c_full_path, engine='h5netcdf')
     ds_intra.close()
     logging.debug("output file written successfully: %s", l1c_full_path)
@@ -472,44 +470,49 @@ def main():
     time.sleep(np.random.rand(1, 1)[0][0])  # to avoid issue with mkdir
     parser = argparse.ArgumentParser(description="L1B->L1C")
     parser.add_argument("--verbose", action="store_true", default=False)
+
+    parser.add_argument(
+        "--l1bsafe",
+        required=True,
+        help="Level-1B WV XSP SAFE (Sentinel-1 IFREMER) path .nc.",
+    )
+
+    parser.add_argument(
+        "--productid",
+        help="set the output product ID (e.g. B48).",
+        required=True,
+    )
+
+    parser.add_argument(
+        "--outputdir",
+        required=False,
+        help="directory where to store output netCDF files.",
+    )
+
+    parser.add_argument(
+        "--configproducts",
+        help="path of a yaml config file where the different versions of products are defined.",
+        required=False,
+        default=os.path.join(
+            os.path.dirname(slcl1butils.__file__), "BXX_description.yml"
+        )
+    )
+    
     parser.add_argument(
         "--overwrite",
         action="store_true",
         default=False,
-        help="overwrite the existing outputs [default=False]",
+        help="overwrite the existing outputs [default=False].",
         required=False,
     )
-    parser.add_argument(
-        "--l1bsafe",
-        required=True,
-        help="Level-1B WV XSP SAFE (Sentinel-1 IFREMER) path .nc",
-    )
-    parser.add_argument(
-        "--outputdir",
-        required=False,
-        help="directory where to store output netCDF files",
-        default=conf["wv_outputdir"],
-    )
-    parser.add_argument(
-        "--productid",
-        help="set the output product ID (e.g. B48) default product ID will be read from config.yaml",
-        required=False,
-        default=conf["l1c_wv_productid"],
-    )
-    parser.add_argument(
-        "--configproducts",
-        help="path of a yaml config file where the different versions of products are defined",
-        required=False,
-        default=os.path.join(
-            os.path.dirname(slcl1butils.__file__), "BXX_description.yml"
-        ),
-    )
+    
     parser.add_argument(
         "--dev",
         action="store_true",
         default=False,
         help="dev mode stops the computation early",
     )
+    
     args = parser.parse_args()
     fmt = "%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(message)s"
     if args.verbose:
@@ -520,27 +523,36 @@ def main():
         logging.basicConfig(
             level=logging.INFO, format=fmt, datefmt="%d/%m/%Y %H:%M:%S", force=True
         )
+        
     t0 = time.time()
-    logging.info("product productid to produce: %s", args.productid)
-    logging.info("outputdir will be: %s", args.outputdir)
+
     confproduct = get_product_id_parameters(
         args.configproducts, product_id=args.productid
     )
+
+    outputdir = args.outputdir if args.outputdir is not None else confproduct.get('outputdir')
+        
+    if outputdir is None:
+        raise ValueError("outputdir is None. Specify output directory using --outputdir or adding the key in the configuration file.")
+    
+    logging.info("product productid to produce: %s", args.productid)
+    logging.info("outputdir will be: %s", outputdir)
+
 
     cpt = do_l1c_safe_from_l1b_safe(
         args.l1bsafe,
         productid=args.productid,
         product_configuration=confproduct,
-        outputdir=args.outputdir,
+        outputdir=outputdir,
         colocat=True,
         time_separation="2tau",
         overwrite=args.overwrite,
         dev=args.dev,
     )
-    logging.info("counters : %s", cpt)
-
+    
+    logging.info("counters: %s", cpt)
     logging.info("successful L1C processing")
-    logging.info("outputdir was: %s", args.outputdir)
+    logging.info("outputdir was: %s", outputdir)
     logging.info("peak memory usage: %s Mbytes", get_memory_usage())
     logging.info("done in %1.3f min", (time.time() - t0) / 60.0)
 
