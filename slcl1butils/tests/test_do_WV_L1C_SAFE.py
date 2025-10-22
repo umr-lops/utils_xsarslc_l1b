@@ -42,6 +42,13 @@ class TestWV_L1C_Processing(unittest.TestCase):
             "crop_xspectra": None,
             "mode": "WV",
             "add_ww3spectra": False,
+            "auxilliary_dataset":{
+                "ecmwf_0100_1h": {
+                    "step": 1,
+                    "pattern": "./ecmwf/forecast/hourly/0100deg/netcdf_light/%Y/%j/ECMWF_FORECAST_0100_%Y%m%d%H%M_10U_10V.nc",
+                    "name": 'ecmwf_0100_1h'}
+            }
+
         }
 
     def test_get_l1c_filepath_generation(self):
