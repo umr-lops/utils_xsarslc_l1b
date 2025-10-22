@@ -150,7 +150,7 @@ def ww3_IWL1Btrack_hindcasts_30min(filename, date):
     """
 
     str_time = datetime.datetime.strftime(date, "%Y-%m-%d-T%H:%M:%S.000000000")
-    ds = xr.open_dataset(filename)
+    ds = xr.open_dataset(filename, engine='h5netcdf')
     dst = (
         ds.sel(time=str_time)
         .drop_vars("time")
