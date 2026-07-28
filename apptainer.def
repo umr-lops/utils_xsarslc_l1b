@@ -1,0 +1,52 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%files
+    . /app
+
+%post
+    set -e
+
+    # Installer les dépendances système nécessaires
+    apt-get update && apt-get install -y \
+        wget \
+        curl \
+        ca-certificates \
+        bzip2 \
+        tar \
+        libglib2.0-0 \
+        libxext6 \
+        libsm6 \
+        libxrender1
+
+    # Installer micromamba (comme dans l'exemple)
+    MICROMAMBA_DIR=/opt/micromamba
+    mkdir -p $MICROMAMBA_DIR/bin
+    cd $MICROMAMBA_DIR
+    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    export PATH=$MICROMAMBA_DIR/bin:$PATH
+
+    # Créer l'environnement conda avec Python 3.12, pip et les dépendances
+    ENV_DIR=/opt/env
+    $MICROMAMBA_DIR/bin/micromamba create --yes \
+        --root-prefix $MICROMAMBA_DIR \
+        -p $ENV_DIR \
+        python=3.12 pip \
+        xsar \
+        xarray-safe-s1 \
+        geopandas \
+        rioxarray
+
+    # Installer le package slcl1butils (et ses dépendances via pyproject.toml)
+    $ENV_DIR/bin/pip install /app
+
+    # Nettoyer
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+%environment
+    export PATH=/opt/env/bin:/opt/micromamba/bin:$PATH
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+
+%runscript
+    exec python "$@"
