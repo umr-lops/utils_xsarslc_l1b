@@ -5,10 +5,11 @@ This module provides functions to find scatterometer matchups from a Parquet fil
 read scatterometer netCDF data, and associate wind information to SAR tiles.
 """
 
+import logging
 import os
 import re
-import logging
 from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -17,40 +18,44 @@ from shapely.geometry import Polygon
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    'find_matchup_file',
-    'read_scat_netcdf',
-    'haversine',
-    'normalize_lon',
-    'find_closest_scat_point',
-    'associate_sar_tiles_with_scat',
-    'extract_sar_datetime',
+    "find_matchup_file",
+    "read_scat_netcdf",
+    "haversine",
+    "normalize_lon",
+    "find_closest_scat_point",
+    "associate_sar_tiles_with_scat",
+    "extract_sar_datetime",
 ]
+
 
 def get_tile_polygon(ds_sar, tile_idx):
     """
     Create a Shapely polygon for a specific tile using corner coordinates.
-    
+
     Args:
         ds_sar (xr.Dataset): SAR dataset with corner_longitude and corner_latitude variables.
         tile_idx (tuple): Indices (burst, tile_line, tile_sample) or (tile_line, tile_sample).
-    
+
     Returns:
         shapely.geometry.Polygon or None: Polygon of the tile, or None if not available.
     """
-    
-    
+
     # Determine dimensions
-    if 'burst' in ds_sar.corner_longitude.dims:
+    if "burst" in ds_sar.corner_longitude.dims:
         # 3D: (burst, tile_line, tile_sample, c_sample, c_line)
         burst, tl, ts = tile_idx
-        lon_corners = ds_sar.corner_longitude.isel(burst=burst, tile_line=tl, tile_sample=ts).values
-        lat_corners = ds_sar.corner_latitude.isel(burst=burst, tile_line=tl, tile_sample=ts).values
+        lon_corners = ds_sar.corner_longitude.isel(
+            burst=burst, tile_line=tl, tile_sample=ts
+        ).values
+        lat_corners = ds_sar.corner_latitude.isel(
+            burst=burst, tile_line=tl, tile_sample=ts
+        ).values
     else:
         # 2D: (tile_line, tile_sample, c_sample, c_line)
         tl, ts = tile_idx
         lon_corners = ds_sar.corner_longitude.isel(tile_line=tl, tile_sample=ts).values
         lat_corners = ds_sar.corner_latitude.isel(tile_line=tl, tile_sample=ts).values
-    
+
     # Reorder corners: [0, 1, 3, 2] for proper polygon (bottom-left, bottom-right, top-right, top-left)
     # c_sample dimension (0,1) and c_line dimension (0,1)
     # c_sample=0, c_line=0 -> corner 0 (bottom-left)
@@ -61,13 +66,16 @@ def get_tile_polygon(ds_sar, tile_idx):
     reorder = [0, 1, 3, 2]
     lon_ordered = lon_corners.flatten()[reorder]
     lat_ordered = lat_corners.flatten()[reorder]
-    
+
     # Create polygon
     points = list(zip(lon_ordered, lat_ordered))
     return Polygon(points)
+
+
 # -----------------------------------------------------------------------------
 # 1. Matchup file search (Parquet)
 # -----------------------------------------------------------------------------
+
 
 def extract_sar_datetime(safename_l1bxsp):
     """Extract the start acquisition datetime from the SAFE name."""
@@ -81,25 +89,26 @@ def extract_sar_datetime(safename_l1bxsp):
 
 def extract_scat_info_from_path(scat_path_series):
     """Extract scatterometer type, satellite, and resolution from SCAT Path."""
+
     def _extract(path):
         satellite = None
         scat_type = None
         resolution = None
-        parts = path.split('/')
+        parts = path.split("/")
         for part in parts:
-            if part in ['hy-2b', 'hy-2c', 'metop-b', 'metop-c']:
+            if part in ["hy-2b", "hy-2c", "metop-b", "metop-c"]:
                 satellite = part
-            elif part in ['hscat', 'ascat']:
+            elif part in ["hscat", "ascat"]:
                 scat_type = part
-            elif part in ['5.7km', '12.5km', '25km']:
+            elif part in ["5.7km", "12.5km", "25km"]:
                 resolution = part
         return satellite, scat_type, resolution
 
     extracted = scat_path_series.apply(_extract)
     df_new = pd.DataFrame(
         extracted.tolist(),
-        columns=['scat_satellite', 'scat_type', 'scat_resolution'],
-        index=scat_path_series.index
+        columns=["scat_satellite", "scat_type", "scat_resolution"],
+        index=scat_path_series.index,
     )
     return df_new
 
@@ -110,7 +119,9 @@ def _add_scat_info(df):
         info_df = extract_scat_info_from_path(df["SCAT Path"])
         df = pd.concat([df, info_df], axis=1)
     else:
-        logger.warning("Column 'SCAT Path' not found, cannot extract scatterometer info.")
+        logger.warning(
+            "Column 'SCAT Path' not found, cannot extract scatterometer info."
+        )
     return df
 
 
@@ -118,9 +129,9 @@ def _apply_filters(df, scat_filter, identifier):
     """Apply extra filters to the DataFrame."""
     if scat_filter:
         col_mapping = {
-            'type': 'scat_type',
-            'satellite': 'scat_satellite',
-            'resolution': 'scat_resolution'
+            "type": "scat_type",
+            "satellite": "scat_satellite",
+            "resolution": "scat_resolution",
         }
         for key, value in scat_filter.items():
             col_name = col_mapping.get(key, key)
@@ -129,7 +140,9 @@ def _apply_filters(df, scat_filter, identifier):
             else:
                 logger.warning("Column '%s' not found, ignoring filter.", col_name)
     if df.empty:
-        logger.debug("No matchup after applying filters %s for %s.", scat_filter, identifier)
+        logger.debug(
+            "No matchup after applying filters %s for %s.", scat_filter, identifier
+        )
         return None
     logger.info("Matchups found: %d rows for %s", len(df), identifier)
     return df
@@ -142,9 +155,13 @@ def find_matchup_by_time(sar_datetime, df, scat_filter=None, time_window_seconds
         return None
 
     if not pd.api.types.is_datetime64_any_dtype(df["SAR Start Acquisition datetime"]):
-        df["SAR Start Acquisition datetime"] = pd.to_datetime(df["SAR Start Acquisition datetime"])
+        df["SAR Start Acquisition datetime"] = pd.to_datetime(
+            df["SAR Start Acquisition datetime"]
+        )
 
-    time_diff_sec = (df["SAR Start Acquisition datetime"] - sar_datetime).abs().dt.total_seconds()
+    time_diff_sec = (
+        (df["SAR Start Acquisition datetime"] - sar_datetime).abs().dt.total_seconds()
+    )
     mask_time = time_diff_sec <= time_window_seconds
     if not mask_time.any():
         logger.debug("No matchup within %.1f seconds.", time_window_seconds)
@@ -154,31 +171,43 @@ def find_matchup_by_time(sar_datetime, df, scat_filter=None, time_window_seconds
     filtered_df = filtered_df.assign(time_diff_sec=time_diff_sec[mask_time])
     filtered_df = filtered_df.sort_values("time_diff_sec")
 
-    logger.info("Found %d matchups within time window (closest at %.2f s).",
-                len(filtered_df), filtered_df.iloc[0]["time_diff_sec"])
+    logger.info(
+        "Found %d matchups within time window (closest at %.2f s).",
+        len(filtered_df),
+        filtered_df.iloc[0]["time_diff_sec"],
+    )
 
-    preview_cols = ["SAR File Name", "SAR Start Acquisition datetime", "SCAT Path", "time_diff_sec"]
+    preview_cols = [
+        "SAR File Name",
+        "SAR Start Acquisition datetime",
+        "SCAT Path",
+        "time_diff_sec",
+    ]
     available = [c for c in preview_cols if c in filtered_df.columns]
     if available:
-        logger.debug("Closest matchups (before filtering):\n%s",
-                     filtered_df.head(3)[available].to_string(index=False))
+        logger.debug(
+            "Closest matchups (before filtering):\n%s",
+            filtered_df.head(3)[available].to_string(index=False),
+        )
 
     filtered_df = _add_scat_info(filtered_df)
     return _apply_filters(filtered_df, scat_filter, sar_datetime)
 
 
-def find_matchup_file(safename_l1bxsp, parquet_file, scat_filter=None, time_window_seconds=3):
+def find_matchup_file(
+    safename_l1bxsp, parquet_file, scat_filter=None, time_window_seconds=3
+):
     """Search for matchups in a Parquet file for a given SAFE."""
     if not os.path.exists(parquet_file):
         logger.error("Parquet file not found: %s", parquet_file)
         return None
-    
+
     try:
         df = pd.read_parquet(parquet_file)
     except Exception as e:
         logger.error("Cannot read Parquet: %s", e)
         return None
-    
+
     sar_datetime = extract_sar_datetime(safename_l1bxsp)
     if sar_datetime is None:
         return None
@@ -188,7 +217,7 @@ def find_matchup_file(safename_l1bxsp, parquet_file, scat_filter=None, time_wind
         mask_exact = df["SAR File Name"].str.contains(
             sar_datetime.strftime("%Y%m%dT%H%M%S"), na=False
         )
-        
+
         if mask_exact.any():
             filtered_df = df[mask_exact].copy()
             logger.debug("Matchup found by exact file name.")
@@ -196,7 +225,10 @@ def find_matchup_file(safename_l1bxsp, parquet_file, scat_filter=None, time_wind
             return _apply_filters(filtered_df, scat_filter, safename_l1bxsp)
 
     # Fallback: time proximity
-    logger.debug("No exact match; trying time proximity with window of %.1f s.", time_window_seconds)
+    logger.debug(
+        "No exact match; trying time proximity with window of %.1f s.",
+        time_window_seconds,
+    )
     return find_matchup_by_time(sar_datetime, df, scat_filter, time_window_seconds)
 
 
@@ -204,33 +236,34 @@ def find_matchup_file(safename_l1bxsp, parquet_file, scat_filter=None, time_wind
 # 2. Scatterometer netCDF reading and colocation
 # -----------------------------------------------------------------------------
 
+
 def read_scat_netcdf(scat_path):
     """
     Read HY‑2 (or ASCAT) scatterometer netCDF file and return an xarray Dataset
     with unpacked variables (lon, lat, wind_speed, wind_direction, time).
-    
+
     Longitudes are converted from 0-360° to -180-180° for easier plotting.
     """
     ds = xr.open_dataset(scat_path)
 
     # Unpack lon/lat with scale_factor=1e-5, add_offset=0
     # Les valeurs sont en micro-degrés (1e-5 degrés)
-    lon = ds.lon #* 1e-5
-    lat = ds.lat #* 1e-5
-    
+    lon = ds.lon  # * 1e-5
+    lat = ds.lat  # * 1e-5
+
     # Convertir les longitudes de 0-360° vers -180-180°
     # normalize_lon est importé plus haut dans le module
     lon_normalized = normalize_lon(lon, center=0)
 
     # Find wind speed variable
-    speed_var = 'wind_speed'
+    speed_var = "wind_speed"
     # for var in ds.data_vars:
     #     if 'speed' in var.lower() and ('wind' in var.lower() or var == 'wind_speed'):
     #         speed_var = var
     #         break
 
     # Find wind direction variable (could be 'wind_dir' or 'wind_direction')
-    dir_var = 'wind_dir'
+    dir_var = "wind_dir"
     # for var in ds.data_vars:
     #     if 'dir' in var.lower() and ('wind' in var.lower() or var == 'wind_dir' or var == 'wind_direction'):
     #         dir_var = var
@@ -241,26 +274,30 @@ def read_scat_netcdf(scat_path):
 
     # Apply scale_factor and add_offset if present
     wind_speed = ds[speed_var]
-    if hasattr(ds[speed_var], 'scale_factor') and hasattr(ds[speed_var], 'add_offset'):
+    if hasattr(ds[speed_var], "scale_factor") and hasattr(ds[speed_var], "add_offset"):
         wind_speed = wind_speed * ds[speed_var].scale_factor + ds[speed_var].add_offset
-    elif hasattr(ds[speed_var], 'scale_factor'):
+    elif hasattr(ds[speed_var], "scale_factor"):
         wind_speed = wind_speed * ds[speed_var].scale_factor
 
     wind_direction = ds[dir_var]
-    if hasattr(ds[dir_var], 'scale_factor') and hasattr(ds[dir_var], 'add_offset'):
-        wind_direction = wind_direction * ds[dir_var].scale_factor + ds[dir_var].add_offset
-    elif hasattr(ds[dir_var], 'scale_factor'):
+    if hasattr(ds[dir_var], "scale_factor") and hasattr(ds[dir_var], "add_offset"):
+        wind_direction = (
+            wind_direction * ds[dir_var].scale_factor + ds[dir_var].add_offset
+        )
+    elif hasattr(ds[dir_var], "scale_factor"):
         wind_direction = wind_direction * ds[dir_var].scale_factor
 
     # Time (usually in seconds since 1990-01-01, keep as numeric)
     time = ds.time
-    scat_ds = xr.Dataset({
-        'lon': (['row', 'cell'], lon_normalized.values),
-        'lat': (['row', 'cell'], lat.values),
-        'wind_speed': (['row', 'cell'], wind_speed.values),
-        'wind_direction': (['row', 'cell'], wind_direction.values),
-        'time': (['row', 'cell'], time.values),
-    })
+    scat_ds = xr.Dataset(
+        {
+            "lon": (["row", "cell"], lon_normalized.values),
+            "lat": (["row", "cell"], lat.values),
+            "wind_speed": (["row", "cell"], wind_speed.values),
+            "wind_direction": (["row", "cell"], wind_direction.values),
+            "time": (["row", "cell"], time.values),
+        }
+    )
     return scat_ds
 
 
@@ -269,7 +306,10 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0
     dlon = np.radians(lon2 - lon1)
     dlat = np.radians(lat2 - lat1)
-    a = np.sin(dlat/2)**2 + np.cos(np.radians(lat1)) * np.cos(np.radians(lat2)) * np.sin(dlon/2)**2
+    a = (
+        np.sin(dlat / 2) ** 2
+        + np.cos(np.radians(lat1)) * np.cos(np.radians(lat2)) * np.sin(dlon / 2) ** 2
+    )
     c = 2 * np.arcsin(np.sqrt(a))
     return R * c
 
@@ -331,48 +371,60 @@ def associate_sar_tiles_with_scat(ds_sar, scat_ds, counter, max_distance_km=50):
         ds_sar (xr.Dataset): updated dataset SAR with SCAT informations
         counter (defaultdict): count the stats of association SCAT-SAR
     """
-    import pandas as pd
     import re
     from datetime import datetime
+
+    import pandas as pd
 
     # ---- Récupération du temps SAR (sensing_time) ----
     lon_dims = ds_sar.longitude.dims
     lat_dims = ds_sar.latitude.dims
     if lon_dims != lat_dims:
-        logger.warning("longitude and latitude have different dims: %s vs %s", lon_dims, lat_dims)
+        logger.warning(
+            "longitude and latitude have different dims: %s vs %s", lon_dims, lat_dims
+        )
 
-    if len(lon_dims) == 3 and 'burst' in lon_dims and 'tile_line' in lon_dims and 'tile_sample' in lon_dims:
-        dims = ('burst', 'tile_line', 'tile_sample')
-        shape = (ds_sar.dims['burst'], ds_sar.dims['tile_line'], ds_sar.dims['tile_sample'])
+    if (
+        len(lon_dims) == 3
+        and "burst" in lon_dims
+        and "tile_line" in lon_dims
+        and "tile_sample" in lon_dims
+    ):
+        dims = ("burst", "tile_line", "tile_sample")
+        shape = (
+            ds_sar.dims["burst"],
+            ds_sar.dims["tile_line"],
+            ds_sar.dims["tile_sample"],
+        )
         lon_sar = ds_sar.longitude.values
         lat_sar = ds_sar.latitude.values
-        if 'sensing_time' in ds_sar:
+        if "sensing_time" in ds_sar:
             sensing_time = ds_sar.sensing_time.values
         else:
             # Fallback: extraire la date du nom SAFE
-            safe_name = ds_sar.attrs.get('safe', '')
-            match = re.search(r'_(\d{8}T\d{6})_', safe_name)
+            safe_name = ds_sar.attrs.get("safe", "")
+            match = re.search(r"_(\d{8}T\d{6})_", safe_name)
             if match:
                 start_date_str = match.group(1)
                 dt = datetime.strptime(start_date_str, "%Y%m%dT%H%M%S")
-                sensing_time = np.full(shape, np.datetime64(dt), dtype='datetime64[ns]')
+                sensing_time = np.full(shape, np.datetime64(dt), dtype="datetime64[ns]")
             else:
                 sensing_time = None
                 logger.warning("sensing_time not available, cannot compute time delta.")
-    elif len(lon_dims) == 2 and 'tile_line' in lon_dims and 'tile_sample' in lon_dims:
-        dims = ('tile_line', 'tile_sample')
-        shape = (ds_sar.dims['tile_line'], ds_sar.dims['tile_sample'])
+    elif len(lon_dims) == 2 and "tile_line" in lon_dims and "tile_sample" in lon_dims:
+        dims = ("tile_line", "tile_sample")
+        shape = (ds_sar.dims["tile_line"], ds_sar.dims["tile_sample"])
         lon_sar = ds_sar.longitude.values
         lat_sar = ds_sar.latitude.values
-        if 'sensing_time' in ds_sar:
+        if "sensing_time" in ds_sar:
             sensing_time = ds_sar.sensing_time.values
         else:
-            safe_name = ds_sar.attrs.get('safe', '')
-            match = re.search(r'_(\d{8}T\d{6})_', safe_name)
+            safe_name = ds_sar.attrs.get("safe", "")
+            match = re.search(r"_(\d{8}T\d{6})_", safe_name)
             if match:
                 start_date_str = match.group(1)
                 dt = datetime.strptime(start_date_str, "%Y%m%dT%H%M%S")
-                sensing_time = np.full(shape, np.datetime64(dt), dtype='datetime64[ns]')
+                sensing_time = np.full(shape, np.datetime64(dt), dtype="datetime64[ns]")
             else:
                 sensing_time = None
                 logger.warning("sensing_time not available, cannot compute time delta.")
@@ -392,13 +444,14 @@ def associate_sar_tiles_with_scat(ds_sar, scat_ds, counter, max_distance_km=50):
     scat_lat_out = np.full(shape, np.nan)
     scat_speed_out = np.full(shape, np.nan)
     scat_dir_out = np.full(shape, np.nan)
-    scat_time_out = np.full(shape, np.datetime64('NaT'), dtype='datetime64[ns]')
+    scat_time_out = np.full(shape, np.datetime64("NaT"), dtype="datetime64[ns]")
     scat_dist_out = np.full(shape, np.nan)
     scat_time_delta_out = np.full(shape, np.nan)  # delta en secondes
 
     # ---- Filtrage des données SCAT valides (vent + temps) ----
     # On utilise pd.isnull pour détecter les NaT
     import pandas as pd
+
     mask_wind = np.isfinite(scat_ds.wind_speed) & np.isfinite(scat_ds.wind_direction)
     # Le temps peut être NaT, on le filtre
     time_valid = ~pd.isnull(scat_ds.time.values)
@@ -429,7 +482,7 @@ def associate_sar_tiles_with_scat(ds_sar, scat_ds, counter, max_distance_km=50):
         min_dist = dist[min_idx]
 
         if min_dist <= max_distance_km:
-            counter['tile_with_scat_data'] += 1
+            counter["tile_with_scat_data"] += 1
             scat_lon_out.flat[idx] = scat_lon_arr[min_idx]
             scat_lat_out.flat[idx] = scat_lat_arr[min_idx]
             scat_speed_out.flat[idx] = scat_speed_arr[min_idx]
@@ -442,7 +495,9 @@ def associate_sar_tiles_with_scat(ds_sar, scat_ds, counter, max_distance_km=50):
                 sar_dt = sensing_time_flat[idx]
                 scat_dt = scat_time_arr[min_idx]
                 # Soustraire les deux datetime64
-                delta_seconds = (sar_dt - scat_dt).astype('timedelta64[s]').astype(float)
+                delta_seconds = (
+                    (sar_dt - scat_dt).astype("timedelta64[s]").astype(float)
+                )
                 # Vérifier que la valeur est raisonnable (par exemple < 1 heure)
                 if np.abs(delta_seconds) < 3600:
                     scat_time_delta_out.flat[idx] = delta_seconds
@@ -450,7 +505,7 @@ def associate_sar_tiles_with_scat(ds_sar, scat_ds, counter, max_distance_km=50):
                     # Delta trop grand -> on met NaN (probablement un décalage horaire)
                     scat_time_delta_out.flat[idx] = np.nan
         else:
-            counter['tile_without_scat_data'] += 1
+            counter["tile_without_scat_data"] += 1
 
     # ---- Add to dataset ----
     ds_sar = ds_sar.assign(
@@ -462,14 +517,15 @@ def associate_sar_tiles_with_scat(ds_sar, scat_ds, counter, max_distance_km=50):
         scat_distance_km=(dims, scat_dist_out),
         scat_time_delta_seconds=(dims, scat_time_delta_out),
     )
-    ds_sar.attrs['matchup_parquet_file'] = scat_ds.attrs.get('matchup_parquet_file', '')
-    ds_sar.attrs['scat_path'] = scat_ds.attrs.get('scat_path', '')
+    ds_sar.attrs["matchup_parquet_file"] = scat_ds.attrs.get("matchup_parquet_file", "")
+    ds_sar.attrs["scat_path"] = scat_ds.attrs.get("scat_path", "")
     return ds_sar, counter
 
 
 # -----------------------------------------------------------------------------
 # 3. Path helper for scatterometer files
 # -----------------------------------------------------------------------------
+
 
 def resolve_scat_path(path):
     """
@@ -482,8 +538,8 @@ def resolve_scat_path(path):
 
     # List of (old_prefix, new_prefix) pairs to try
     replacements = [
-        ('/home/datawork-cersat-public/', '/legacy/project/cersat/public/'),
-        ('/legacy/project/cersat/public/', '/home/datawork-cersat-public/'),
+        ("/home/datawork-cersat-public/", "/legacy/project/cersat/public/"),
+        ("/legacy/project/cersat/public/", "/home/datawork-cersat-public/"),
     ]
     for old, new in replacements:
         if old in path:
@@ -494,6 +550,7 @@ def resolve_scat_path(path):
 
     logger.warning("SCAT file not found: %s", path)
     return path
+
 
 def get_scat_footprint_polygon(scat_ds, buffer_deg=0.5):
     """
@@ -512,49 +569,54 @@ def get_scat_footprint_polygon(scat_ds, buffer_deg=0.5):
     max_lon += buffer_deg
     min_lat -= buffer_deg
     max_lat += buffer_deg
-    polygon = Polygon([
-        (min_lon, min_lat),
-        (max_lon, min_lat),
-        (max_lon, max_lat),
-        (min_lon, max_lat),
-        (min_lon, min_lat)
-    ])
+    polygon = Polygon(
+        [
+            (min_lon, min_lat),
+            (max_lon, min_lat),
+            (max_lon, max_lat),
+            (min_lon, max_lat),
+            (min_lon, min_lat),
+        ]
+    )
     return polygon
 
 
 def parse_tile_indices(tile_str, ds_sar):
     """
     Parse tile indices from string and validate against dataset dimensions.
-    
+
     Args:
         tile_str (str): String like '0,3,1' or '3,1'
         ds_sar (xr.Dataset): Dataset to validate dimensions against.
-    
+
     Returns:
         tuple: (burst_idx, tile_line_idx, tile_sample_idx) or (tile_line_idx, tile_sample_idx)
     """
-    parts = [int(x) for x in tile_str.split(',')]
-    
+    parts = [int(x) for x in tile_str.split(",")]
+
     # Check if 3D or 2D
-    if 'burst' in ds_sar.longitude.dims:
+    if "burst" in ds_sar.longitude.dims:
         if len(parts) != 3:
-            raise ValueError(f"Dataset has burst dimension, need 3 indices, got {len(parts)}")
+            raise ValueError(
+                f"Dataset has burst dimension, need 3 indices, got {len(parts)}"
+            )
         b, tl, ts = parts
         # Validate
-        if b >= ds_sar.dims['burst']:
+        if b >= ds_sar.dims["burst"]:
             raise ValueError(f"burst index {b} >= {ds_sar.dims['burst']}")
-        if tl >= ds_sar.dims['tile_line']:
+        if tl >= ds_sar.dims["tile_line"]:
             raise ValueError(f"tile_line index {tl} >= {ds_sar.dims['tile_line']}")
-        if ts >= ds_sar.dims['tile_sample']:
+        if ts >= ds_sar.dims["tile_sample"]:
             raise ValueError(f"tile_sample index {ts} >= {ds_sar.dims['tile_sample']}")
         return (b, tl, ts)
     else:
         if len(parts) != 2:
-            raise ValueError(f"Dataset has 2D dimensions, need 2 indices, got {len(parts)}")
+            raise ValueError(
+                f"Dataset has 2D dimensions, need 2 indices, got {len(parts)}"
+            )
         tl, ts = parts
-        if tl >= ds_sar.dims['tile_line']:
+        if tl >= ds_sar.dims["tile_line"]:
             raise ValueError(f"tile_line index {tl} >= {ds_sar.dims['tile_line']}")
-        if ts >= ds_sar.dims['tile_sample']:
+        if ts >= ds_sar.dims["tile_sample"]:
             raise ValueError(f"tile_sample index {ts} >= {ds_sar.dims['tile_sample']}")
         return (tl, ts)
-

@@ -231,9 +231,9 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind, nameWW3sp_pro
                         time=sensing_time,
                     )
                     ds_ww3_cartesian.attrs["source"] = "ww3"
-                    ds_ww3_cartesian.attrs[
-                        "description"
-                    ] = "WW3spectra_EFTHraw resampled on SAR cartesian grid"
+                    ds_ww3_cartesian.attrs["description"] = (
+                        "WW3spectra_EFTHraw resampled on SAR cartesian grid"
+                    )
                     ds_ww3_cartesian = ds_ww3_cartesian.rename("WW3spectra_EFTHcart")
                     colocww3sp_ds = check_colocation(
                         cartesianspWW3=ds_ww3_cartesian,
@@ -250,9 +250,9 @@ def resampleWW3spectra_on_TOPS_SAR_cartesian_grid(dsar, xspeckind, nameWW3sp_pro
                             .isel(time=colocww3sp_ds["WW3spectra_index"].data)
                             .rename("WW3spectra_EFTHraw")
                         )
-                        rawspww3.attrs[
-                            "description"
-                        ] = "colocated raw EFTH(f,dir) WAVEWATCH III wave height spectra"
+                        rawspww3.attrs["description"] = (
+                            "colocated raw EFTH(f,dir) WAVEWATCH III wave height spectra"
+                        )
                         colocww3sp_ds = colocww3sp_ds.assign_coords(i)
                         colocww3sp_ds = colocww3sp_ds.expand_dims(
                             ["tile_line", "tile_sample"]

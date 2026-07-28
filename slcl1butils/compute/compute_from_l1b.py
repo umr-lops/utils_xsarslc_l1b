@@ -54,7 +54,9 @@ def compute_xs_from_l1b(
     else:
         ds = xr.open_dataset(_file, group=burst_type + "burst")
     # when all the tiles of the subswath are over land -> there is (for now) no xspectra in the dataset
-    xspectra_present = ("xspectra_2tau_Re" in ds.variables) or ("xspectra_Re" in ds.variables)
+    xspectra_present = ("xspectra_2tau_Re" in ds.variables) or (
+        "xspectra_Re" in ds.variables
+    )
     if crop_limits is not None and xspectra_present is True:
         logging.info("crop spectra with wave numbers below : %s", crop_limits)
         # select a tile on ocean
@@ -63,19 +65,17 @@ def compute_xs_from_l1b(
         # with dimensions ('tile_line', 'tile_sample')
 
         # 1. Stack the tile dimensions
-        stacked = ds.stack(tile=('tile_line', 'tile_sample'))
+        stacked = ds.stack(tile=("tile_line", "tile_sample"))
 
         # 2. Apply the where condition to select ocean tiles and drop land tiles
-        ocean_stacked = stacked.where(stacked['land_flag'] == False, drop=True)
-        if 'tile' in ocean_stacked['k_rg'].coords:
+        ocean_stacked = stacked.where(stacked["land_flag"] == False, drop=True)
+        if "tile" in ocean_stacked["k_rg"].coords:
             k_rg_ref = ocean_stacked["k_rg"].isel(tile=0)
         else:
             k_rg_ref = ocean_stacked["k_rg"]
-        indrg_to_keep = np.where(
-            k_rg_ref <= crop_limits["rg"]
-        )[0]
+        indrg_to_keep = np.where(k_rg_ref <= crop_limits["rg"])[0]
         indaz_to_keep = np.where(ocean_stacked["k_az"] <= crop_limits["az"])[0]
-        
+
         logging.info(
             "new half cross spectra should be cropped from :[rg x az] %ix%i -> %ix%i",
             len(ds["freq_sample"]),

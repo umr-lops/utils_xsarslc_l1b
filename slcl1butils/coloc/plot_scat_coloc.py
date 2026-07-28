@@ -4,24 +4,29 @@
 Plotting functions for scatterometer colocation results.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+import matplotlib.pyplot as plt
+import numpy as np
+from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
 
 
-
-def plot_colocation(ds_sar, scat_ds, title="Scatterometer colocation",
-                    figsize=(14, 6), sar_polygon=None, scat_polygon=None,
-                    output_path=None):
+def plot_colocation(
+    ds_sar,
+    scat_ds,
+    title="Scatterometer colocation",
+    figsize=(14, 6),
+    sar_polygon=None,
+    scat_polygon=None,
+    output_path=None,
+):
     """
     Create two maps side by side:4E
     - Left: SAR tile centroids colored by validity of scat wind (green=valid, gray=invalid)
             plus scatterometer grid points (small gray dots)
     - Right: Wind vectors (quiver) at SAR centroids with valid wind,
              gray dots for invalid tiles. Vector colors depend on wind speed.
-    
+
     Args:
         ds_sar (xr.Dataset): SAR dataset with added scat_* variables.
         scat_ds (xr.Dataset): Scatterometer dataset (for grid points).
@@ -68,13 +73,14 @@ def plot_colocation(ds_sar, scat_ds, title="Scatterometer colocation",
             lat_min, lat_max = -90, 90
 
     # Create figure with two subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize,
-                                   subplot_kw={'projection': ccrs.PlateCarree()})
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()}
+    )
 
     # Common settings for both axes
     for ax in (ax1, ax2):
-        ax.add_feature(cfeature.LAND, facecolor='lightgray')
-        ax.add_feature(cfeature.OCEAN, facecolor='lightblue')
+        ax.add_feature(cfeature.LAND, facecolor="lightgray")
+        ax.add_feature(cfeature.OCEAN, facecolor="lightblue")
         ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
         ax.add_feature(cfeature.BORDERS, linewidth=0.5, alpha=0.5)
         # Set extent to SAR bounding box with margin
@@ -86,70 +92,129 @@ def plot_colocation(ds_sar, scat_ds, title="Scatterometer colocation",
         gl.yformatter = LATITUDE_FORMATTER
 
     # --- Left map: validity and scat grid ---
-    ax1.scatter(lon_scat, lat_scat, s=1, color='gray', alpha=0.3,
-                transform=ccrs.PlateCarree(), label='Scat grid')
-    colors = np.where(valid, 'green', 'gray')
-    ax1.scatter(lon_sar, lat_sar, s=8, c=colors, alpha=0.7,
-                transform=ccrs.PlateCarree(), label='SAR tiles')
-    
+    ax1.scatter(
+        lon_scat,
+        lat_scat,
+        s=1,
+        color="gray",
+        alpha=0.3,
+        transform=ccrs.PlateCarree(),
+        label="Scat grid",
+    )
+    colors = np.where(valid, "green", "gray")
+    ax1.scatter(
+        lon_sar,
+        lat_sar,
+        s=8,
+        c=colors,
+        alpha=0.7,
+        transform=ccrs.PlateCarree(),
+        label="SAR tiles",
+    )
+
     if sar_polygon is not None:
-        ax1.add_geometries([sar_polygon], crs=ccrs.PlateCarree(),
-                           facecolor='none', edgecolor='blue', linewidth=2, label='SAR footprint')
+        ax1.add_geometries(
+            [sar_polygon],
+            crs=ccrs.PlateCarree(),
+            facecolor="none",
+            edgecolor="blue",
+            linewidth=2,
+            label="SAR footprint",
+        )
     if scat_polygon is not None:
-        ax1.add_geometries([scat_polygon], crs=ccrs.PlateCarree(),
-                           facecolor='none', edgecolor='red', linewidth=2, label='SCAT footprint')
-    
-    ax1.set_title('Validity of matched wind')
-    ax1.legend(loc='best')
+        ax1.add_geometries(
+            [scat_polygon],
+            crs=ccrs.PlateCarree(),
+            facecolor="none",
+            edgecolor="red",
+            linewidth=2,
+            label="SCAT footprint",
+        )
+
+    ax1.set_title("Validity of matched wind")
+    ax1.legend(loc="best")
 
     # --- Right map: wind vectors with color by speed ---
     invalid_mask = ~valid
     if np.any(invalid_mask):
-        ax2.scatter(lon_sar[invalid_mask], lat_sar[invalid_mask],
-                    s=8, color='gray', alpha=0.5,
-                    transform=ccrs.PlateCarree(), label='No valid wind')
-    
+        ax2.scatter(
+            lon_sar[invalid_mask],
+            lat_sar[invalid_mask],
+            s=8,
+            color="gray",
+            alpha=0.5,
+            transform=ccrs.PlateCarree(),
+            label="No valid wind",
+        )
+
     if np.any(valid):
         # Convert wind direction to u/v components
         dir_rad = np.radians(scat_dir[valid])
         u = -scat_speed[valid] * np.sin(dir_rad)
         v = -scat_speed[valid] * np.cos(dir_rad)
-        
+
         # Create colorbar based on wind speed (fixed 0-20 m/s)
         speeds = scat_speed[valid]
-        
+
         # Use quiver with colormap and fixed norm
         norm = plt.Normalize(vmin=0, vmax=20)
-        q = ax2.quiver(lon_sar[valid], lat_sar[valid], u, v,
-                       speeds,  # color by wind speed
-                       scale=300, scale_units='width',
-                       cmap='viridis', norm=norm,
-                       width=0.003, headwidth=3,
-                       transform=ccrs.PlateCarree())
-        
+        q = ax2.quiver(
+            lon_sar[valid],
+            lat_sar[valid],
+            u,
+            v,
+            speeds,  # color by wind speed
+            scale=300,
+            scale_units="width",
+            cmap="viridis",
+            norm=norm,
+            width=0.003,
+            headwidth=3,
+            transform=ccrs.PlateCarree(),
+        )
+
         # Add colorbar with fixed limits
-        cbar = plt.colorbar(q, ax=ax2, orientation='vertical', fraction=0.046, pad=0.04)
-        cbar.set_label('Wind speed (m/s)')
+        cbar = plt.colorbar(q, ax=ax2, orientation="vertical", fraction=0.046, pad=0.04)
+        cbar.set_label("Wind speed (m/s)")
         cbar.set_ticks(np.arange(0, 21, 5))  # ticks at 0, 5, 10, 15, 20
     else:
-        ax2.scatter(lon_sar, lat_sar, s=8, color='gray', alpha=0.5,
-                    transform=ccrs.PlateCarree(), label='SAR tiles (no wind)')
-    
+        ax2.scatter(
+            lon_sar,
+            lat_sar,
+            s=8,
+            color="gray",
+            alpha=0.5,
+            transform=ccrs.PlateCarree(),
+            label="SAR tiles (no wind)",
+        )
+
     if sar_polygon is not None:
-        ax2.add_geometries([sar_polygon], crs=ccrs.PlateCarree(),
-                           facecolor='none', edgecolor='blue', linewidth=2, label='SAR footprint')
+        ax2.add_geometries(
+            [sar_polygon],
+            crs=ccrs.PlateCarree(),
+            facecolor="none",
+            edgecolor="blue",
+            linewidth=2,
+            label="SAR footprint",
+        )
     if scat_polygon is not None:
-        ax2.add_geometries([scat_polygon], crs=ccrs.PlateCarree(),
-                           facecolor='none', edgecolor='red', linewidth=2, label='SCAT footprint')
-    
-    ax2.set_title('Wind vectors (color = speed)')
-    ax2.legend(loc='best')
+        ax2.add_geometries(
+            [scat_polygon],
+            crs=ccrs.PlateCarree(),
+            facecolor="none",
+            edgecolor="red",
+            linewidth=2,
+            label="SCAT footprint",
+        )
+
+    ax2.set_title("Wind vectors (color = speed)")
+    ax2.legend(loc="best")
 
     plt.suptitle(title, fontsize=14)
     plt.tight_layout()
-    
+
     if output_path:
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
         plt.close()
         print(f"Plot saved to {output_path}")
     else:

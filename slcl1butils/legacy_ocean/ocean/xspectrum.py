@@ -1,12 +1,26 @@
-import numpy as np
-import xarray as xr
 import logging
-# from ocean.spectrum_private.spectra_functions import *
-from slcl1butils.legacy_ocean.ocean.spectrum_private.spectra_functions import tony_omni,tony_spread,findUstar
+
 # from shared.my_functions import *
 import dask
+import numpy as np
+import xarray as xr
 
-def SpectrumCartesianGrid(*, dk= (2*np.pi/400., 2*np.pi/400.), kmax=(2*np.pi/0.2, 2*np.pi/0.2), strict = 'kmax', next_fast_len=False, **kwargs):
+# from ocean.spectrum_private.spectra_functions import *
+from slcl1butils.legacy_ocean.ocean.spectrum_private.spectra_functions import (
+    findUstar,
+    tony_omni,
+    tony_spread,
+)
+
+
+def SpectrumCartesianGrid(
+    *,
+    dk=(2 * np.pi / 400.0, 2 * np.pi / 400.0),
+    kmax=(2 * np.pi / 0.2, 2 * np.pi / 0.2),
+    strict="kmax",
+    next_fast_len=False,
+    **kwargs,
+):
     """
     Generate the cartesian grid of the spectrum
 
@@ -22,18 +36,27 @@ def SpectrumCartesianGrid(*, dk= (2*np.pi/400., 2*np.pi/400.), kmax=(2*np.pi/0.2
         dk (tuple of float) : wavenumber spacing in x and y directions
     """
 
-    #--------------Wavenumber initialization---------------------------
-    Nk = (int(np.rint(kmax[0]/dk[0]))*2, int(np.rint(kmax[1]/dk[1]))*2) # Nk points over the [-kmax, kmax[ span
+    # --------------Wavenumber initialization---------------------------
+    Nk = (
+        int(np.rint(kmax[0] / dk[0])) * 2,
+        int(np.rint(kmax[1] / dk[1])) * 2,
+    )  # Nk points over the [-kmax, kmax[ span
 
     if next_fast_len:
         pass
 
-    if strict=='dk':
-        k = (np.fft.fftshift(np.fft.fftfreq(Nk[0], 1./(Nk[0]*dk[0]))), np.fft.fftshift(np.fft.fftfreq(Nk[1], 1./(Nk[1]*dk[1])))) # dk is preserved
+    if strict == "dk":
+        k = (
+            np.fft.fftshift(np.fft.fftfreq(Nk[0], 1.0 / (Nk[0] * dk[0]))),
+            np.fft.fftshift(np.fft.fftfreq(Nk[1], 1.0 / (Nk[1] * dk[1]))),
+        )  # dk is preserved
         kmax = (max(k[0]), max(k[1]))
     else:
-        k = (np.fft.fftshift(np.fft.fftfreq(Nk[0], 0.5/kmax[0])), np.fft.fftshift(np.fft.fftfreq(Nk[1], 0.5/kmax[1]))) # kmax is preserved
-        dk = (2*kmax[0]/Nk[0], 2*kmax[1]/Nk[1])
+        k = (
+            np.fft.fftshift(np.fft.fftfreq(Nk[0], 0.5 / kmax[0])),
+            np.fft.fftshift(np.fft.fftfreq(Nk[1], 0.5 / kmax[1])),
+        )  # kmax is preserved
+        dk = (2 * kmax[0] / Nk[0], 2 * kmax[1] / Nk[1])
 
     return k, dk
 
@@ -49,10 +72,16 @@ def surf_params_to_wavenumber_params(**kwargs):
     Returns:
         (dict) : dictionary with keys 'dk' (tuple of float) wavenumber sampling, and 'kmax' (tuple of float) maximum wavenumber
     """
-    size = kwargs.pop('size')
-    dr = kwargs.pop('dr')
-    (kex, key)=(np.pi/dr[0], np.pi/dr[1]) # kmax (range of wavenumber is [-kmax, kmax[)
-    return {'dk':(2*np.pi/size[0], 2*np.pi/size[1]), 'kmax' : (kex, key)} # kmax used in the spectrum has to be the sampling rate ke (twice the real kmax)
+    size = kwargs.pop("size")
+    dr = kwargs.pop("dr")
+    (kex, key) = (
+        np.pi / dr[0],
+        np.pi / dr[1],
+    )  # kmax (range of wavenumber is [-kmax, kmax[)
+    return {
+        "dk": (2 * np.pi / size[0], 2 * np.pi / size[1]),
+        "kmax": (kex, key),
+    }  # kmax used in the spectrum has to be the sampling rate ke (twice the real kmax)
 
 
 def from_surfparams(**kwargs):
@@ -67,7 +96,9 @@ def from_surfparams(**kwargs):
         () : see from_wavenumbers() Keyword Args
     """
     params = surf_params_to_wavenumber_params(**kwargs)
-    return from_wavenumber(**params, **kwargs) # kmax used in the spectrum has to be the sampling rate ke (twice the real kmax)
+    return from_wavenumber(
+        **params, **kwargs
+    )  # kmax used in the spectrum has to be the sampling rate ke (twice the real kmax)
 
 
 def set_directivity(ds, directivity, **kwargs):
@@ -80,30 +111,37 @@ def set_directivity(ds, directivity, **kwargs):
             dir_weight : float in [0.,1.]: weight ponderation of the angular function. weight = 0.8 means 80 % energy in the wind direction half quadrant -- optional, default 1. --
             dir_alpha : float : In alongwind mode, alpha is the angular cutting velocity in the tanh angular profile -- optional, default 10 --
     """
-    ds.attrs.update({'wd':np.radians(kwargs.pop('wd', np.degrees(ds.wd)))})
-    dir_alpha = kwargs.pop('dir_alpha', 10.)
-    dir_weight = kwargs.pop('dir_weight', 1.)
+    ds.attrs.update({"wd": np.radians(kwargs.pop("wd", np.degrees(ds.wd)))})
+    dir_alpha = kwargs.pop("dir_alpha", 10.0)
+    dir_weight = kwargs.pop("dir_weight", 1.0)
     #         reset_derivations(ds)
-    tm = np.arctan2(ds.ky, ds.kx).transpose(*ds.dims)  # direction of wavenumber (relative to x axis)
-    if directivity == 'alongwind':
+    tm = np.arctan2(ds.ky, ds.kx).transpose(
+        *ds.dims
+    )  # direction of wavenumber (relative to x axis)
+    if directivity == "alongwind":
         #  self.magnitude+=np.roll(np.flipud(np.roll(np.fliplr(self.magnitude), 1,axis=1)),1,axis=0) # it works when spectrum is on a fftfreq kind of grid
-        ds+=np.roll(np.flipud(np.roll(np.fliplr(ds), 1,axis=1)),1,axis=0) # it works when spectrum is on a fftfreq kind of grid
-        angular_weight_func = lambda t: 0.5*(np.tanh(dir_alpha*(t+np.pi/2.))-np.tanh(dir_alpha*(t-np.pi/2.)))
-        angle_mpipi = lambda x:np.arctan2(np.sin(x), np.cos(x))
-        weight = angular_weight_func (angle_mpipi(tm-ds.wd))
-        ds*=(dir_weight*(weight-0.5)+0.5)
-    elif directivity == 'dissymmetry':
-        ds = 2.*ds*(np.sin(((tm-ds.wd)+np.pi)/2)**2)
+        ds += np.roll(
+            np.flipud(np.roll(np.fliplr(ds), 1, axis=1)), 1, axis=0
+        )  # it works when spectrum is on a fftfreq kind of grid
+        angular_weight_func = lambda t: 0.5 * (
+            np.tanh(dir_alpha * (t + np.pi / 2.0))
+            - np.tanh(dir_alpha * (t - np.pi / 2.0))
+        )
+        angle_mpipi = lambda x: np.arctan2(np.sin(x), np.cos(x))
+        weight = angular_weight_func(angle_mpipi(tm - ds.wd))
+        ds *= dir_weight * (weight - 0.5) + 0.5
+    elif directivity == "dissymmetry":
+        ds = 2.0 * ds * (np.sin(((tm - ds.wd) + np.pi) / 2) ** 2)
     #  elif directivity == 'None' and ds.directivity!='None':
-    elif directivity == 'None':
-        ds.attrs.update({'directivity':'None'})
+    elif directivity == "None":
+        ds.attrs.update({"directivity": "None"})
     #             self.eval_spectrum()
-    elif directivity == 'None' and ds.directivity=='None':
+    elif directivity == "None" and ds.directivity == "None":
         pass
     else:
-        raise Exception('Wrong directivity for {} spectrum : {}'.format(ds.name, directivity))
-
-
+        raise Exception(
+            "Wrong directivity for {} spectrum : {}".format(ds.name, directivity)
+        )
 
 
 def from_wavenumber(**kwargs):
@@ -127,30 +165,34 @@ def from_wavenumber(**kwargs):
         (xarray) : Cartesian Ocean spectrum
     """
 
-    (kx,ky), (dkx, dky) = SpectrumCartesianGrid(**kwargs)
-    name = kwargs.pop('name', 'elfouhaily')
-    ws = kwargs.pop('ws', 0.)
-    wd = np.radians(kwargs.pop('wd', 0.))
-    cur = kwargs.pop("cur", 0.)
-    curdir = np.radians(kwargs.pop("curdir", 0.))
-    myscheduler = kwargs.pop('client', None)
+    (kx, ky), (dkx, dky) = SpectrumCartesianGrid(**kwargs)
+    name = kwargs.pop("name", "elfouhaily")
+    ws = kwargs.pop("ws", 0.0)
+    wd = np.radians(kwargs.pop("wd", 0.0))
+    cur = kwargs.pop("cur", 0.0)
+    curdir = np.radians(kwargs.pop("curdir", 0.0))
+    myscheduler = kwargs.pop("client", None)
 
-    if ('omega' not in kwargs) and ('fetch' not in kwargs):
+    if ("omega" not in kwargs) and ("fetch" not in kwargs):
         omega = 0.84
         fetch = np.inf
-    elif ('omega' in kwargs) and ('fetch' in kwargs):
-        raise ValueError('Both omega and fetch can not be defined')
-    elif ('omega' in kwargs) and ('fetch' not in kwargs):
-        omega = kwargs.pop('omega')
-        fetch = 2.2e4*(np.arctanh((omega/0.84)**(-1./0.75)))**(2.5)
+    elif ("omega" in kwargs) and ("fetch" in kwargs):
+        raise ValueError("Both omega and fetch can not be defined")
+    elif ("omega" in kwargs) and ("fetch" not in kwargs):
+        omega = kwargs.pop("omega")
+        fetch = 2.2e4 * (np.arctanh((omega / 0.84) ** (-1.0 / 0.75))) ** (2.5)
     else:
-        fetch = kwargs.pop('fetch')
-        omega = 0.84*np.tanh((fetch/(2.2e4))**0.4)**(-0.75)
+        fetch = kwargs.pop("fetch")
+        omega = 0.84 * np.tanh((fetch / (2.2e4)) ** 0.4) ** (-0.75)
 
     #  ds = xr.DataArray(np.zeros((len(kx), len(ky))), dims = ('kx','ky'), coords={'kx':kx, 'ky':ky} , attrs = {'omega':omega,'ws':ws,'wd':wd,'fetch':fetch, 'dkx':dkx, 'dky':dky, 'units':'m**4/rad**2', 'cur':cur, 'curdir':curdir}, name='spectrum magnitude')
-    kx = xr.DataArray(kx , dims = ('kx',) , attrs = {'spacing':dkx, 'units':'rad/m'}).chunk({'kx':500})
-    ky = xr.DataArray(ky , dims = ('ky',) , attrs = {'spacing':dky, 'units':'rad/m'}).chunk({'ky':500})
-    km = np.sqrt(kx**2+ky**2)
+    kx = xr.DataArray(kx, dims=("kx",), attrs={"spacing": dkx, "units": "rad/m"}).chunk(
+        {"kx": 500}
+    )
+    ky = xr.DataArray(ky, dims=("ky",), attrs={"spacing": dky, "units": "rad/m"}).chunk(
+        {"ky": 500}
+    )
+    km = np.sqrt(kx**2 + ky**2)
     tm = np.arctan2(ky, kx)
 
     # if name == 'elfouhaily' and ws>0.:
@@ -167,87 +209,153 @@ def from_wavenumber(**kwargs):
     ## self.magnitude = np.transpose(kudryavtsev(self.k, angle_mpipi(self.t-self.windDir), self.dt, self.windSpeed, self.fetch))/(self.km**4)
     # else:
     # logging.debug('No wind sea spectrum defined')
-    if name == 'elfouhaily' and ws>0.:
-        ustar = findUstar(ws, 10.)
+    if name == "elfouhaily" and ws > 0.0:
+        ustar = findUstar(ws, 10.0)
         curv = xr.map_blocks(tony_omni, km, [ws, ustar, omega]).load()
         spread = xr.map_blocks(tony_spread, km, [ws, omega]).load()
-        ds = (curv/(2*np.pi*km**4)*(1.+spread*np.cos(2*(tm-wd))))
+        ds = curv / (2 * np.pi * km**4) * (1.0 + spread * np.cos(2 * (tm - wd)))
         ds = ds.load()
 
         # ds = (curv/(2*np.pi*km**4)*(1.+spread*np.cos(2*(tm-wd)))).compute(scheduler = myscheduler)
-        ds = ds.assign_coords(kx=kx, ky=ky).rename('spectrum magnitude')
-        ds.attrs.update({'omega':omega,'ws':ws,'wd':wd,'fetch':fetch, 'dkx':dkx, 'dky':dky, 'units':'m**4/rad**2', 'cur':cur, 'curdir':curdir})
+        ds = ds.assign_coords(kx=kx, ky=ky).rename("spectrum magnitude")
+        ds.attrs.update(
+            {
+                "omega": omega,
+                "ws": ws,
+                "wd": wd,
+                "fetch": fetch,
+                "dkx": dkx,
+                "dky": dky,
+                "units": "m**4/rad**2",
+                "cur": cur,
+                "curdir": curdir,
+            }
+        )
         #  spread = 0.; logging.debug('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
-        set_directivity(ds, kwargs.pop('directivity', 'alongwind'))
-    elif name == 'kudryavtsev':
-        raise ValueError('kudryavtsev spectrum not implemented in xspectrum')
+        set_directivity(ds, kwargs.pop("directivity", "alongwind"))
+    elif name == "kudryavtsev":
+        raise ValueError("kudryavtsev spectrum not implemented in xspectrum")
         #  self.magnitude = np.transpose(kudryavtsev(self.k, angle_mpipi(self.t-self.windDir), self.dt, self.windSpeed, self.fetch))/(self.km**4)
     else:
-        logging.debug('No wind sea spectrum defined')
+        logging.debug("No wind sea spectrum defined")
 
-    if 'ds' not in locals(): ds = xr.DataArray(np.zeros((len(kx), len(ky))), dims = ('kx','ky'), coords={'kx':kx, 'ky':ky} , attrs = {'omega':omega,'ws':ws,'wd':wd,'fetch':fetch, 'dkx':dkx, 'dky':dky, 'units':'m**4/rad**2', 'cur':cur, 'curdir':curdir}, name='spectrum magnitude')
+    if "ds" not in locals():
+        ds = xr.DataArray(
+            np.zeros((len(kx), len(ky))),
+            dims=("kx", "ky"),
+            coords={"kx": kx, "ky": ky},
+            attrs={
+                "omega": omega,
+                "ws": ws,
+                "wd": wd,
+                "fetch": fetch,
+                "dkx": dkx,
+                "dky": dky,
+                "units": "m**4/rad**2",
+                "cur": cur,
+                "curdir": curdir,
+            },
+            name="spectrum magnitude",
+        )
 
-    if ('sa' in kwargs) or ('sk' in kwargs)  or ('sd' in kwargs):
+    if ("sa" in kwargs) or ("sk" in kwargs) or ("sd" in kwargs):
 
-        sa =  np.array(np.double(kwargs.pop('sa', 1.)), ndmin=1)
-        sk =  np.array(np.double(kwargs.pop('sk', 2*np.pi/10.)), ndmin=1)
-        sd =  np.array(np.double(kwargs.pop('sd', 0.)), ndmin=1)
+        sa = np.array(np.double(kwargs.pop("sa", 1.0)), ndmin=1)
+        sk = np.array(np.double(kwargs.pop("sk", 2 * np.pi / 10.0)), ndmin=1)
+        sd = np.array(np.double(kwargs.pop("sd", 0.0)), ndmin=1)
         if len(sk) != len(sa):
             sa = np.tile(sa[0], len(sk))
         if len(sk) != len(sd):
-            raise ValueError('sk and sd must have the same length')
+            raise ValueError("sk and sd must have the same length")
 
         swell_magnitude = np.zeros(km.shape)
         jkx = list()
         jky = list()
-        logging.debug('Sine wavenumbers and directions are redefined to :')
-        for e in sk*np.cos(np.radians(sd)):
-            jkx.append(np.argmin(np.abs(ds.kx.data-e)))
-        for e in sk*np.sin(np.radians(sd)):
-            jky.append(np.argmin(np.abs(ds.ky.data-e)))
+        logging.debug("Sine wavenumbers and directions are redefined to :")
+        for e in sk * np.cos(np.radians(sd)):
+            jkx.append(np.argmin(np.abs(ds.kx.data - e)))
+        for e in sk * np.sin(np.radians(sd)):
+            jky.append(np.argmin(np.abs(ds.ky.data - e)))
 
-        for i,(ikx,iky) in enumerate(zip(jkx, jky)):
-            swell_magnitude[ikx, iky] = 0.5*(sa[i]/np.sqrt((ds.dkx*ds.dky)))**2
-            logging.debug(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, np.round(float(km[ikx, iky]),3), i, sa[i], i, np.round(np.rad2deg(float(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data))),3), i, np.round(2*np.pi/float(km[ikx, iky]),3), i, np.round(np.sqrt(9.81*float(km[ikx, iky]))/(2.*np.pi),3)))
-        ds+= swell_magnitude
-    ds[np.where(np.isinf(ds))] = 0.
-    ds[np.where(np.isnan(ds))] = 0.
+        for i, (ikx, iky) in enumerate(zip(jkx, jky)):
+            swell_magnitude[ikx, iky] = 0.5 * (sa[i] / np.sqrt((ds.dkx * ds.dky))) ** 2
+            logging.debug(
+                (
+                    "\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz"
+                ).format(
+                    i,
+                    np.round(float(km[ikx, iky]), 3),
+                    i,
+                    sa[i],
+                    i,
+                    np.round(
+                        np.rad2deg(float(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data))),
+                        3,
+                    ),
+                    i,
+                    np.round(2 * np.pi / float(km[ikx, iky]), 3),
+                    i,
+                    np.round(np.sqrt(9.81 * float(km[ikx, iky])) / (2.0 * np.pi), 3),
+                )
+            )
+        ds += swell_magnitude
+    ds[np.where(np.isinf(ds))] = 0.0
+    ds[np.where(np.isnan(ds))] = 0.0
     return ds
-
-
 
 
 def compute_moments(ds, moments):
     """
-        Evaluate numerical integration of the spectrum moments:  \int (k*cos(a))**ni (k*sin(a))**nj (omega**nw) spec(k) k dk dt where ni, nj, nw are the three digits in the moment list and 'a' the angular direction [degrees] relative to original direction
-        moments : tuple composed of the 3 indexes ni,nj and nw and angular direction. ex : (1,0,0,90)
-        If angle is not provided (ex: moment=(1, 0, 1)) angle "a" is assumed to be zero
+    Evaluate numerical integration of the spectrum moments:  \int (k*cos(a))**ni (k*sin(a))**nj (omega**nw) spec(k) k dk dt where ni, nj, nw are the three digits in the moment list and 'a' the angular direction [degrees] relative to original direction
+    moments : tuple composed of the 3 indexes ni,nj and nw and angular direction. ex : (1,0,0,90)
+    If angle is not provided (ex: moment=(1, 0, 1)) angle "a" is assumed to be zero
     """
-    if 'moments' not in ds.attrs : ds.attrs.update({'moments':{}})
-    if type(moments)==tuple: moments = [moments] # This is different from list(moment)
-    moments = [m if len(m)==4 else (*m,0.) for m in moments]
-    moments = [(int(m[0]), int(m[1]), int(m[2]), float(m[3]))  for m in moments if m not in ds.moments.keys()]
+    if "moments" not in ds.attrs:
+        ds.attrs.update({"moments": {}})
+    if type(moments) == tuple:
+        moments = [moments]  # This is different from list(moment)
+    moments = [m if len(m) == 4 else (*m, 0.0) for m in moments]
+    moments = [
+        (int(m[0]), int(m[1]), int(m[2]), float(m[3]))
+        for m in moments
+        if m not in ds.moments.keys()
+    ]
     moments = dict.fromkeys(moments)
 
-    km = np.sqrt(ds.kx**2+ds.ky**2)
-    tm = np.arctan2(ds.ky, ds.kx).transpose(*ds.dims)  # direction of wavenumber (relative to x axis)
-    w = np.sqrt(9.81*km*(1.+(km/363.2)**2))
+    km = np.sqrt(ds.kx**2 + ds.ky**2)
+    tm = np.arctan2(ds.ky, ds.kx).transpose(
+        *ds.dims
+    )  # direction of wavenumber (relative to x axis)
+    w = np.sqrt(9.81 * km * (1.0 + (km / 363.2) ** 2))
 
     for key in moments.keys():
         ni, nj, nw, a = key
-        if (nw>0) and (ds.cur>0.) : logging.debug('Current is not taken into account for computing moment {}'.format(key))
-        moments[key]=(((km*np.cos(tm-np.radians(a)))**int(ni)*(km*np.sin(tm-np.radians(a)))**int(nj)*(w**int(nw))*ds).sum()*ds.dkx*ds.dky).data
-    ds.attrs['moments'].update(moments)
+        if (nw > 0) and (ds.cur > 0.0):
+            logging.debug(
+                "Current is not taken into account for computing moment {}".format(key)
+            )
+        moments[key] = (
+            (
+                (km * np.cos(tm - np.radians(a))) ** int(ni)
+                * (km * np.sin(tm - np.radians(a))) ** int(nj)
+                * (w ** int(nw))
+                * ds
+            ).sum()
+            * ds.dkx
+            * ds.dky
+        ).data
+    ds.attrs["moments"].update(moments)
 
 
 def compute_swh(ds):
-    compute_moments(ds, (0,0,0,0))
-    ds.attrs.update({'swh':4.*np.sqrt(ds.moments[(0,0,0,0.)])})
+    compute_moments(ds, (0, 0, 0, 0))
+    ds.attrs.update({"swh": 4.0 * np.sqrt(ds.moments[(0, 0, 0, 0.0)])})
     return ds.swh
 
+
 def compute_mss(ds):
-    compute_moments(ds, [(2,0,0,0.), (0,2,0,0.)])
-    ds.attrs.update({'mss':ds.moments[(2,0,0,0.)]+ds.moments[(0,2,0,0.)]})
+    compute_moments(ds, [(2, 0, 0, 0.0), (0, 2, 0, 0.0)])
+    ds.attrs.update({"mss": ds.moments[(2, 0, 0, 0.0)] + ds.moments[(0, 2, 0, 0.0)]})
     return ds.mss
 
 
@@ -265,6 +373,7 @@ def from_ww3(ds, **kwargs):
         kwargs (dict, optional): other keywords arguments passed to from_xPolarSpectrum()
     """
     import slcl1butils.legacy_ocean.ocean.xPolarSpectrum as xPS
+
     specww3 = xPS.from_ww3(ds, **kwargs)
     return from_xPolarSpectrum(specww3, **kwargs)
 
@@ -290,28 +399,30 @@ def from_xPolarSpectrum(ds, **kwargs):
         (xarray) : xCartesianSpectrum
     """
 
-    if 'size' in kwargs and 'dr' in kwargs:
+    if "size" in kwargs and "dr" in kwargs:
         params = surf_params_to_wavenumber_params(**kwargs)
         kwargs.update(params)
 
-    (kx,ky), (dkx, dky) = SpectrumCartesianGrid(**kwargs)
+    (kx, ky), (dkx, dky) = SpectrumCartesianGrid(**kwargs)
 
-    kx = xr.DataArray(kx, dims='kx' , attrs = {'spacing':dkx, 'units':'rad/m'})
-    ky = xr.DataArray(ky, dims='ky' , attrs = {'spacing':dky, 'units':'rad/m'})
-    k = np.sqrt(kx**2+ky**2)
-    phi = np.arctan2(ky,kx)
+    kx = xr.DataArray(kx, dims="kx", attrs={"spacing": dkx, "units": "rad/m"})
+    ky = xr.DataArray(ky, dims="ky", attrs={"spacing": dky, "units": "rad/m"})
+    k = np.sqrt(kx**2 + ky**2)
+    phi = np.arctan2(ky, kx)
 
     #   Extend dataset to pi angle to avoid nan at the border near t=pi during interpolation
-    nds = ds[{'phi':0}].copy()
-    nds['phi'] = ds[{'phi':0}].phi.data+2.*np.pi
-    nds = xr.concat((ds, nds), dim='phi')
+    nds = ds[{"phi": 0}].copy()
+    nds["phi"] = ds[{"phi": 0}].phi.data + 2.0 * np.pi
+    nds = xr.concat((ds, nds), dim="phi")
 
-    myspec= nds.interp(k=k, phi=phi).assign_coords(kx=kx, ky=ky)
+    myspec = nds.interp(k=k, phi=phi).assign_coords(kx=kx, ky=ky)
 
-    myspec.attrs.update({'dkx':dkx, 'dky':dky})
-    myspec = myspec.where(np.sqrt(myspec.kx**2+myspec.ky**2)>min(ds.k).data, other=0.)# spectrum at wavenumbers smaller than the minimum one of the polar spectrum are set to zero
-    myspec.attrs.pop('dphi', None)
-    return myspec.drop_vars(('k','phi','dk'))
+    myspec.attrs.update({"dkx": dkx, "dky": dky})
+    myspec = myspec.where(
+        np.sqrt(myspec.kx**2 + myspec.ky**2) > min(ds.k).data, other=0.0
+    )  # spectrum at wavenumbers smaller than the minimum one of the polar spectrum are set to zero
+    myspec.attrs.pop("dphi", None)
+    return myspec.drop_vars(("k", "phi", "dk"))
 
 
 #  ******************************************************************************************************************************************************************
@@ -338,69 +449,104 @@ def from_wavenumber_old(**kwargs):
     ouputs:
         xarray : Cartesian Ocean Spectrum
     """
-    (kx,ky), (dkx, dky) = SpectrumCartesianGrid(**kwargs)
-    name = kwargs.pop('name', 'elfouhaily')
-    ws = kwargs.pop('ws', 0.)
-    wd = np.radians(kwargs.pop('wd', 0.))
-    cur = kwargs.pop("cur", 0.)
-    curdir = np.radians(kwargs.pop("curdir", 0.))
+    (kx, ky), (dkx, dky) = SpectrumCartesianGrid(**kwargs)
+    name = kwargs.pop("name", "elfouhaily")
+    ws = kwargs.pop("ws", 0.0)
+    wd = np.radians(kwargs.pop("wd", 0.0))
+    cur = kwargs.pop("cur", 0.0)
+    curdir = np.radians(kwargs.pop("curdir", 0.0))
 
-    if ('omega' not in kwargs) and ('fetch' not in kwargs):
+    if ("omega" not in kwargs) and ("fetch" not in kwargs):
         omega = 0.84
         fetch = np.inf
-    elif ('omega' in kwargs) and ('fetch' in kwargs):
-        raise ValueError('Both omega and fetch can not be defined')
-    elif ('omega' in kwargs) and ('fetch' not in kwargs):
-        omega = kwargs.pop('omega')
-        fetch = 2.2e4*(np.arctanh((omega/0.84)**(-1./0.75)))**(2.5)
+    elif ("omega" in kwargs) and ("fetch" in kwargs):
+        raise ValueError("Both omega and fetch can not be defined")
+    elif ("omega" in kwargs) and ("fetch" not in kwargs):
+        omega = kwargs.pop("omega")
+        fetch = 2.2e4 * (np.arctanh((omega / 0.84) ** (-1.0 / 0.75))) ** (2.5)
     else:
-        fetch = kwargs.pop('fetch')
-        omega = 0.84*np.tanh((fetch/(2.2e4))**0.4)**(-0.75)
+        fetch = kwargs.pop("fetch")
+        omega = 0.84 * np.tanh((fetch / (2.2e4)) ** 0.4) ** (-0.75)
 
-    ds = xr.DataArray(np.zeros((len(kx), len(ky))), dims = ('kx','ky'), coords={'kx':kx, 'ky':ky} , attrs = {'omega':omega,'ws':ws,'wd':wd,'fetch':fetch, 'dkx':dkx, 'dky':dky, 'units':'m**4/rad**2', 'cur':cur, 'curdir':curdir}, name='spectrum magnitude')
-    ds.kx.attrs.update({'units':'rad/m'})
-    ds.ky.attrs.update({'units':'rad/m'})
+    ds = xr.DataArray(
+        np.zeros((len(kx), len(ky))),
+        dims=("kx", "ky"),
+        coords={"kx": kx, "ky": ky},
+        attrs={
+            "omega": omega,
+            "ws": ws,
+            "wd": wd,
+            "fetch": fetch,
+            "dkx": dkx,
+            "dky": dky,
+            "units": "m**4/rad**2",
+            "cur": cur,
+            "curdir": curdir,
+        },
+        name="spectrum magnitude",
+    )
+    ds.kx.attrs.update({"units": "rad/m"})
+    ds.ky.attrs.update({"units": "rad/m"})
 
-    km = np.sqrt(ds.kx**2+ds.ky**2)
-    tm = np.arctan2(ds.ky, ds.kx) # direction of wavenumber (relative to x axis)
+    km = np.sqrt(ds.kx**2 + ds.ky**2)
+    tm = np.arctan2(ds.ky, ds.kx)  # direction of wavenumber (relative to x axis)
 
-    if name == 'elfouhaily' and ws>0.:
-        ustar = findUstar(ws, 10.)
+    if name == "elfouhaily" and ws > 0.0:
+        ustar = findUstar(ws, 10.0)
         curv = tony_omni(km, ws, ustar, omega)
         spread = tony_spread(km, ws, omega)
         #  spread = 0.; logging.debug('*******************WARNING : SPECTRUM IS FORCED OMNI !!**********************')
-        magnitude = curv/(2*np.pi*km**4)*(1.+spread*np.cos(2*(tm-ds.wd)))
+        magnitude = (
+            curv / (2 * np.pi * km**4) * (1.0 + spread * np.cos(2 * (tm - ds.wd)))
+        )
         #  ds.merge((xr.DataArray(magnitude, name = 'magnitude', dims=(['kx', 'ky']), attrs={'units':'m**4/rad**2'})).to_dataset(), join='left', inplace=True)
-        ds+=magnitude
-        set_directivity(ds, kwargs.pop('directivity', 'alongwind'))
-    elif name == 'kudryavtsev':
-        raise ValueError('kudryavtsev spectrum not implemented in xspectrum')
+        ds += magnitude
+        set_directivity(ds, kwargs.pop("directivity", "alongwind"))
+    elif name == "kudryavtsev":
+        raise ValueError("kudryavtsev spectrum not implemented in xspectrum")
         #  self.magnitude = np.transpose(kudryavtsev(self.k, angle_mpipi(self.t-self.windDir), self.dt, self.windSpeed, self.fetch))/(self.km**4)
     else:
-        logging.debug('No wind sea spectrum defined')
+        logging.debug("No wind sea spectrum defined")
 
-    if ('sa' in kwargs) or ('sk' in kwargs)  or ('sd' in kwargs):
-        sa =  np.array(np.double(kwargs.pop('sa', 1.)), ndmin=1)
-        sk =  np.array(np.double(kwargs.pop('sk', 2*np.pi/10.)), ndmin=1)
-        sd =  np.array(np.double(kwargs.pop('sd', 0.)), ndmin=1)
+    if ("sa" in kwargs) or ("sk" in kwargs) or ("sd" in kwargs):
+        sa = np.array(np.double(kwargs.pop("sa", 1.0)), ndmin=1)
+        sk = np.array(np.double(kwargs.pop("sk", 2 * np.pi / 10.0)), ndmin=1)
+        sd = np.array(np.double(kwargs.pop("sd", 0.0)), ndmin=1)
         if len(sk) != len(sa):
             sa = np.tile(sa[0], len(sk))
         if len(sk) != len(sd):
-            raise ValueError('sk and sd must have the same length')
+            raise ValueError("sk and sd must have the same length")
 
         swell_magnitude = np.zeros(km.shape)
         jkx = list()
         jky = list()
-        logging.debug('Swell spectrum wavenumbers and directions are redefined to :')
-        for e in sk*np.cos(np.radians(sd)):
-            jkx.append(np.argmin(np.abs(ds.kx-e)))
-        for e in sk*np.sin(np.radians(sd)):
-            jky.append(np.argmin(np.abs(ds.ky-e)))
+        logging.debug("Swell spectrum wavenumbers and directions are redefined to :")
+        for e in sk * np.cos(np.radians(sd)):
+            jkx.append(np.argmin(np.abs(ds.kx - e)))
+        for e in sk * np.sin(np.radians(sd)):
+            jky.append(np.argmin(np.abs(ds.ky - e)))
 
-        for i,(ikx,iky) in enumerate(zip(jkx, jky)):
-            swell_magnitude[ikx, iky] = 0.5*(sa[i]/np.sqrt((ds.dkx*ds.dky)))**2
-            logging.debug(('\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz').format(i, np.round(km[ikx, iky].data,3), i, sa[i], i, np.round(np.rad2deg(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data)),3), i, np.round(2*np.pi/km[ikx, iky].data,3), i, np.round(np.sqrt(9.81*km[ikx, iky].data)/(2.*np.pi),3)))
-        ds+= swell_magnitude
-    ds[np.where(np.isinf(ds))] = 0.
-    ds[np.where(np.isnan(ds))] = 0.
+        for i, (ikx, iky) in enumerate(zip(jkx, jky)):
+            swell_magnitude[ikx, iky] = 0.5 * (sa[i] / np.sqrt((ds.dkx * ds.dky))) ** 2
+            logging.debug(
+                (
+                    "\tk{} = {} rad/m - A{} = {} m - azi{} = {} deg - lambda{} = {} m - f{} = {} Hz"
+                ).format(
+                    i,
+                    np.round(km[ikx, iky].data, 3),
+                    i,
+                    sa[i],
+                    i,
+                    np.round(
+                        np.rad2deg(np.arctan2(ds.ky[iky].data, ds.kx[ikx].data)), 3
+                    ),
+                    i,
+                    np.round(2 * np.pi / km[ikx, iky].data, 3),
+                    i,
+                    np.round(np.sqrt(9.81 * km[ikx, iky].data) / (2.0 * np.pi), 3),
+                )
+            )
+        ds += swell_magnitude
+    ds[np.where(np.isinf(ds))] = 0.0
+    ds[np.where(np.isnan(ds))] = 0.0
     return ds

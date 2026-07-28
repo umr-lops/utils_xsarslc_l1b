@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import time
+import traceback
 import warnings
 from collections import defaultdict
 from datetime import datetime
@@ -21,6 +22,12 @@ from slcl1butils.coloc.coloc import (
 from slcl1butils.coloc.coloc_IW_WW3spectra import (
     resampleWW3spectra_on_TOPS_SAR_cartesian_grid,
 )
+from slcl1butils.coloc.coloc_scatterometer import (
+    associate_sar_tiles_with_scat,
+    find_matchup_file,
+    read_scat_netcdf,
+    resolve_scat_path,
+)
 from slcl1butils.coloc.coloc_XSP_with_GRD import add_grd_ifr_wind
 from slcl1butils.compute.compute_from_l1b import compute_xs_from_l1b
 from slcl1butils.compute.homogeneous_output import add_missing_variables
@@ -36,6 +43,8 @@ from slcl1butils.utils import get_l1c_filepath, get_memory_usage, netcdf_complia
 
 warnings.simplefilter(action="ignore")
 conf = get_conf()
+
+logger = logging.getLogger(__name__)
 
 
 def do_L1C_SAFE_from_L1B_SAFE(
@@ -166,7 +175,7 @@ def do_L1C_SAFE_from_L1B_SAFE(
             save_l1c_to_netcdf(l1c_full_path, ds_intra, ds_inter, product_id=product_id)
             cpt["saved_in_nc"] += 1
 
-    logging.info("cpt: %s", cpt)
+    logger.info("cpt: %s", cpt)
     return l1c_full_path
 
 
@@ -192,7 +201,7 @@ def enrich_onesubswath_l1b(
         ancillary_fields_added: bool
     """
 
-    logging.debug("File in: %s", l1b_fullpath)
+    logger.debug("File in: %s", l1b_fullpath)
     if ancillary_list is None:
         ancillary_list = {}
     # ====================
@@ -225,7 +234,7 @@ def enrich_onesubswath_l1b(
     flag_ancillaries = defaultdict(int)
     if colocat:
         for ancillary_name in ancillary_list:
-            logging.info("ancillary: %s", ancillary_name)
+            logger.info("ancillary: %s", ancillary_name)
             ds_intra, ds_inter, ancillary_fields_added = append_ancillary_field(
                 ancillary_list[ancillary_name], ds_intra, ds_inter
             )
@@ -239,7 +248,7 @@ def enrich_onesubswath_l1b(
             if "spectra" in uu:
                 idx = uu
         ww3spectra_matching_name = ancillary_list[idx]["name"]
-        logging.info(
+        logger.info(
             "the product to use for adding wave spectra is: %s",
             ww3spectra_matching_name,
         )
@@ -260,6 +269,7 @@ def enrich_onesubswath_l1b(
         )
         flag_ancillaries["ww3spectra_inter"] = flag_ww3spectra_added
     # if "s1grd" in ancillary_list:
+
     if product_configuration["add_grdwind"] is True:
         # for uui, uu in enumerate(ancillary_list):
         #     if "s1grd" in uu:
@@ -273,14 +283,75 @@ def enrich_onesubswath_l1b(
             confgrd=entry_conf,
             dfpairs_slc_grd=slcgrdlist,
         )
-        logging.info("cpt GRD : %s", cpt)
+        logger.info("cpt GRD : %s", cpt)
         if l1cgrids != {}:
             ds_intra = l1cgrids["intraburst"]
             ds_inter = l1cgrids["interburst"]
-            logging.info("GRD wind added.")
+            logger.info("GRD wind added.")
             flag_ancillaries["GRD_wind_added"] += 1
         else:
             flag_ancillaries["GRD_wind_missing"] += 1
+    if product_configuration["scatterometer"].get("enabled", False):
+        parquet_file = product_configuration.get("scatterometer_matchups_file")
+        scat_filter = product_configuration.get("scat_filter", {})
+        time_window = product_configuration.get("time_window_seconds", 3)
+        max_dist = product_configuration.get("max_distance_km", 26)
+        logger.info(" max_dist for coloc scat: %s km", max_dist)
+        safename = os.path.dirname(l1b_fullpath)
+        logger.info("Searching scatterometer matchups for %s", safename)
+        logger.info("parquet file of SCAT-SAR matchups: %s", parquet_file)
+        try:
+            df_match = find_matchup_file(
+                safename, parquet_file, scat_filter, time_window
+            )
+        except Exception as e:
+            logger.error("Error in find_matchup_file: %s", e)
+            df_match = None
+
+        if df_match is not None and len(df_match) > 0:
+            row = df_match.iloc[
+                0
+            ]  # we take the first line only, in processing condition, scat filter should be filled with a specific scat ptoduct such as hy-2b_25km
+            scat_path = row["SCAT Path"]
+            scat_path = resolve_scat_path(scat_path)
+            logger.info("Scatterometer file: %s", scat_path)
+            try:
+                scat_ds = read_scat_netcdf(scat_path)
+                scat_ds.attrs["scat_path"] = scat_path
+                scat_ds.attrs["matchup_parquet_file"] = parquet_file
+                # Associate to intra and inter datasets
+                ds_intra, flag_ancillaries = associate_sar_tiles_with_scat(
+                    ds_intra,
+                    scat_ds,
+                    max_distance_km=max_dist,
+                    counter=flag_ancillaries,
+                )
+                ds_inter, flag_ancillaries = associate_sar_tiles_with_scat(
+                    ds_inter,
+                    scat_ds,
+                    max_distance_km=max_dist,
+                    counter=flag_ancillaries,
+                )
+                # Count valid matches
+                valid_intra = np.isfinite(ds_intra.scat_wind_speed).sum().values
+                valid_inter = np.isfinite(ds_inter.scat_wind_speed).sum().values
+                logger.info(
+                    "Scatterometer data added: intra valid %d, inter valid %d",
+                    valid_intra,
+                    valid_inter,
+                )
+                logger.info("stats SCAT-SAR association: %s", flag_ancillaries)
+                flag_ancillaries["scatterometer"] = True
+            except Exception as e:
+                logger.exception(
+                    "Failed to read or associate scatterometer data:for %s and %s",
+                    scat_path,
+                    l1b_fullpath,
+                )
+                flag_ancillaries["scatterometer"] = False
+        else:
+            logger.warning("No scatterometer matchup found for %s", safename)
+            flag_ancillaries["scatterometer"] = False
 
     return ds_intra, ds_inter, flag_ancillaries
 
@@ -312,7 +383,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
         ancillary["pattern"], step=int(ancillary["step"]), date=sar_date
     )
     if len(glob(filename)) != 1:
-        logging.debug("no ancillary files matching %s", filename)
+        logger.debug("no ancillary files matching %s", filename)
         return ds_intra, ds_inter, ancillary_fields_added
     else:
         ancillary_fields_added = True
@@ -369,7 +440,7 @@ def append_ancillary_field(ancillary, ds_intra, ds_inter):
             # Merging the datasets
             ds_inter = xr.merge([ds_inter, _ds_inter])
             ds_inter.attrs[ancillary["name"] + "_pattern"] = filename
-    logging.debug("ancillary fields added")
+    logger.debug("ancillary fields added")
     return ds_intra, ds_inter, ancillary_fields_added
 
 
@@ -481,9 +552,9 @@ def main():
             level=logging.INFO, format=fmt, datefmt="%d/%m/%Y %H:%M:%S", force=True
         )
     t0 = time.time()
-    logging.info("Level-1C XSP product version to generate: %s", args.productid)
-    logging.info("output directory will be: %s", args.outputdir)
-    logging.info("file defining the products is : %s", args.configproducts)
+    logger.info("Level-1C XSP product version to generate: %s", args.productid)
+    logger.info("output directory will be: %s", args.outputdir)
+    logger.info("file defining the products is : %s", args.configproducts)
     confproduct = get_product_id_parameters(
         args.configproducts, product_id=args.productid
     )
@@ -518,10 +589,10 @@ def main():
         dev=args.dev,
         output_format="nc",
     )
-    logging.info("last measurement generated for this SAFE: %s", final_L1C_path)
-    logging.info("successful SAFE processing")
-    logging.info("peak memory usage: %s ", get_memory_usage())
-    logging.info("done in %1.3f min", (time.time() - t0) / 60.0)
+    logger.info("last measurement generated for this SAFE: %s", final_L1C_path)
+    logger.info("successful SAFE processing")
+    logger.info("peak memory usage: %s ", get_memory_usage())
+    logger.info("done in %1.3f min", (time.time() - t0) / 60.0)
 
 
 if __name__ == "__main__":
