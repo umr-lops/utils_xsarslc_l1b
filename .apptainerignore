@@ -1,0 +1,14 @@
+# Ignorer le lien symbolique cassé
+slcl1butils/scripts/do_IW_L1C_SAFE_from_L1B_SAFE_prun.py
+
+# Optionnel : ignorer les fichiers temporaires et caches
+*.pyc
+__pycache__
+*.pyo
+*.so
+.git
+.idea
+.vscode
+*.egg-info
+dist
+build

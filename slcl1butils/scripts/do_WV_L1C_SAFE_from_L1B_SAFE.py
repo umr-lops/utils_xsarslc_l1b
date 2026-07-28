@@ -36,6 +36,7 @@ from slcl1butils.utils import get_memory_usage, netcdf_compliant, xndindex
 
 warnings.simplefilter(action="ignore")
 
+
 def do_l1c_safe_from_l1b_safe(
     full_safe_file,
     productid,
@@ -453,9 +454,9 @@ def save_l1c_to_netcdf(l1c_full_path, ds_intra, productid_L1C, productid_L1B):
     ds_intra.attrs["processor"] = __file__
     ds_intra.attrs["generation_date"] = datetime.today().strftime("%Y-%b-%d")
     ds_intra.attrs["L1B_product_version"] = productid_L1B
-    
+
     # Saving the results in netCDF
-    ds_intra.to_netcdf(l1c_full_path, engine='h5netcdf')
+    ds_intra.to_netcdf(l1c_full_path, engine="h5netcdf")
     ds_intra.close()
     logging.debug("output file written successfully: %s", l1c_full_path)
 
@@ -495,9 +496,9 @@ def main():
         required=False,
         default=os.path.join(
             os.path.dirname(slcl1butils.__file__), "BXX_description.yml"
-        )
+        ),
     )
-    
+
     parser.add_argument(
         "--overwrite",
         action="store_true",
@@ -505,14 +506,14 @@ def main():
         help="overwrite the existing outputs [default=False].",
         required=False,
     )
-    
+
     parser.add_argument(
         "--dev",
         action="store_true",
         default=False,
         help="dev mode stops the computation early",
     )
-    
+
     args = parser.parse_args()
     fmt = "%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(message)s"
     if args.verbose:
@@ -523,21 +524,24 @@ def main():
         logging.basicConfig(
             level=logging.INFO, format=fmt, datefmt="%d/%m/%Y %H:%M:%S", force=True
         )
-        
+
     t0 = time.time()
 
     confproduct = get_product_id_parameters(
         args.configproducts, product_id=args.productid
     )
 
-    outputdir = args.outputdir if args.outputdir is not None else confproduct.get('outputdir')
-        
+    outputdir = (
+        args.outputdir if args.outputdir is not None else confproduct.get("outputdir")
+    )
+
     if outputdir is None:
-        raise ValueError("outputdir is None. Specify output directory using --outputdir or adding the key in the configuration file.")
-    
+        raise ValueError(
+            "outputdir is None. Specify output directory using --outputdir or adding the key in the configuration file."
+        )
+
     logging.info("product productid to produce: %s", args.productid)
     logging.info("outputdir will be: %s", outputdir)
-
 
     cpt = do_l1c_safe_from_l1b_safe(
         args.l1bsafe,
@@ -549,7 +553,7 @@ def main():
         overwrite=args.overwrite,
         dev=args.dev,
     )
-    
+
     logging.info("counters: %s", cpt)
     logging.info("successful L1C processing")
     logging.info("outputdir was: %s", outputdir)

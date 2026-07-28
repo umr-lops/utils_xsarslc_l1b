@@ -1,0 +1,65 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%files
+    . /app
+
+%post
+    set -e
+
+    # Installer les dépendances système
+    apt-get update && apt-get install -y \
+        wget curl ca-certificates bzip2 tar \
+        libglib2.0-0 libxext6 libsm6 libxrender1
+
+    # Installer micromamba
+    MICROMAMBA_DIR=/opt/micromamba
+    mkdir -p $MICROMAMBA_DIR/bin
+    cd $MICROMAMBA_DIR
+    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    export PATH=$MICROMAMBA_DIR/bin:$PATH
+
+    # Créer l'environnement Conda avec les dépendances lourdes
+    ENV_DIR=/opt/env
+    $MICROMAMBA_DIR/bin/micromamba create --yes \
+        --root-prefix $MICROMAMBA_DIR \
+        -p $ENV_DIR \
+        python=3.12 pip \
+        xsar \
+        xarray-safe-s1 \
+        geopandas \
+        rioxarray \
+        tqdm \
+        matplotlib \
+        scipy
+
+    # Vérifier que les fichiers sources sont présents
+    echo "=== Vérification du code source ==="
+    ls -l /app/slcl1butils/coloc/coloc_scatterometer.py || echo "FICHIER SOURCE MANQUANT !"
+
+    # Nettoyer le cache pip
+    $ENV_DIR/bin/pip cache purge
+
+    # Installer le package slcl1butils (SANS --no-deps pour éviter les problèmes d'installation)
+    cd /app
+    $ENV_DIR/bin/pip install --no-cache-dir .
+
+    # Vérifier que le fichier est bien installé
+    echo "=== Vérification dans site-packages ==="
+    ls -l $ENV_DIR/lib/python3.12/site-packages/slcl1butils/coloc/coloc_scatterometer.py || echo "FICHIER MANQUANT DANS SITE-PACKAGES !"
+
+    # Supprimer le code source pour éviter les conflits d'import
+    cd /
+    rm -rf /app
+
+    # Nettoyer
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+    $MICROMAMBA_DIR/bin/micromamba clean --all --yes
+
+%environment
+    export PATH=/opt/env/bin:/opt/micromamba/bin:$PATH
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+
+%runscript
+    exec python "$@"

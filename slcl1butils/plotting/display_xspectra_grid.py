@@ -76,9 +76,9 @@ def draw_signal_and_grid(
             sigma0cerb_pad.shape,
             np.nanmean(sigma0cerb_pad),
         )
-        slc[
-            "sigma0"
-        ].values = sigma0cerb_pad  # on remplace par cerbere (temporairement)
+        slc["sigma0"].values = (
+            sigma0cerb_pad  # on remplace par cerbere (temporairement)
+        )
         #
         sigma0 = slc["sigma0"].values.squeeze()[::step, ::step]
         sigma0[sigma0 == 0] = np.nan

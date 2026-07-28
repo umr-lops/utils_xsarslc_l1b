@@ -71,9 +71,9 @@ def test_finder(lon, lat, datesar, expected):
         time=datesar,
     )  # TODO use sensingTime
     ds_ww3_cartesian.attrs["source"] = "ww3"
-    ds_ww3_cartesian.attrs[
-        "description"
-    ] = "WW3spectra_EFTHraw resampled on SAR cartesian grid"
+    ds_ww3_cartesian.attrs["description"] = (
+        "WW3spectra_EFTHraw resampled on SAR cartesian grid"
+    )
     ds_ww3_cartesian = ds_ww3_cartesian.rename("WW3spectra_EFTHcart")
     da_index = check_colocation(
         cartesianspWW3=ds_ww3_cartesian, lon=lon, lat=lat, time=datesar
